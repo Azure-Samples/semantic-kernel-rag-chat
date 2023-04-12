@@ -14,7 +14,6 @@ Before you get started, make sure you have the following requirements in place:
   - [Azure Functions Extension](https://aka.ms/azfn/vscode)
 - [.NET 7.0 SDK](https://aka.ms/net70) for building and deploying .NET 7 projects.
 - [Azure Function Core Tools 4.x](https://aka.ms/azfn/coretools) for managing Azure Functions
-- [Node.js](https://nodejs.org/en/download) and [Yarn](https://classic.yarnpkg.com/docs/install) for running the frontend application UX.
 
 ## Create an Azure Function project.
 1. Open Visual Studio Code
@@ -62,9 +61,9 @@ In this section will create a minimal implementation for using Semantic Kernel a
     ```
 
 1. Add the Semantic Kernel by adding a `ConfigureServices` call below the existing `ConfigureAppConfiguration` and populating it with an instance of the kernel.
-    > The kernel below is configured to use an OpenAI ChatGPT model (e.g., gpt-3.5-turbo). 
+    > The kernel below is configured to use an OpenAI ChatGPT model (e.g., gpt-3.5-turbo) for chat completions.
 
-    > TODO: instructions on getting an [OpenAI API key](https://platform.openai.com/account/api-keys) setting an `OPENAI_APIKEY` environment variable.
+    > TODO: Add instructions for getting an [OpenAI API key](https://platform.openai.com/account/api-keys) and setting the `OPENAI_APIKEY` environment variable.
     ```csharp
     hostBuilder.ConfigureServices(services =>
     {
@@ -162,21 +161,22 @@ In this section will create a minimal implementation for using Semantic Kernel a
                 .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
                 .Build();
 
-            // Add an OpenAI chat completion service
+            // Connect the OpenAI chat completion APIs to the Semantic Kernel.
             string apiKey = sp.GetRequiredService<IConfiguration>()["OPENAI_APIKEY"];
             kernel.Config.AddOpenAIChatCompletionService(
-                serviceId: "chat",
-                modelId: "gpt-3.5-turbo",
+                serviceId: "chat", // A local identifier for the given AI service.
+                modelId: "gpt-3.5-turbo", // OpenAI model name
                 apiKey: apiKey);
 
             return kernel;
         });
 
-        // Add a chat completion service client
+        // Provide a chat completion service client to our function.
         services.AddSingleton<IChatCompletion>(sp =>
             sp.GetRequiredService<IKernel>().GetService<IChatCompletion>());
 
-        // Create an in-memory chat history store.
+        // Provide a persistant in-memory chat history store with the 
+        // initial ChatGPT system message.
         const string instructions = "You are a helpful friendly assistant.";
         services.AddSingleton<ChatHistory>(sp =>
             sp.GetRequiredService<IChatCompletion>().CreateNewChat(instructions));

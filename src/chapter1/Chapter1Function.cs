@@ -4,22 +4,22 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel.AI.ChatCompletion;
 
-namespace My.ChatFunction
+namespace My.Chapter1
 {
-    public class MyChatFunction
+    public class Chapter1Function
     {
         private readonly ILogger _logger;
         private readonly IChatCompletion _chat;
         private readonly ChatHistory _chatHistory;
 
-        public MyChatFunction(ILoggerFactory loggerFactory, ChatHistory chatHistory, IChatCompletion chat)
+        public Chapter1Function(ILoggerFactory loggerFactory, ChatHistory chatHistory, IChatCompletion chat)
         {
-            _logger = loggerFactory.CreateLogger<MyChatFunction>();
+            _logger = loggerFactory.CreateLogger<Chapter1Function>();
             _chat = chat;
             _chatHistory = chatHistory;
         }
 
-        [Function("MyChatFunction")]
+        [Function("Chapter1")]
         public async Task<HttpResponseData> Run([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
         {
             _logger.LogInformation("C# HTTP trigger function processed a request.");

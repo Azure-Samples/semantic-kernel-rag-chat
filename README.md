@@ -16,9 +16,8 @@ Before you get started, make sure you have the following requirements in place:
 - [Azure Function Core Tools 4.x](https://aka.ms/azfn/coretools) for managing Azure Functions
 
 ## Create an Azure Function project.
-1. Open Visual Studio Code
-1. Click on the Azure extension (or press `SHIFT+ALT+A`)
-1. Mouse-over "WORKSPACE" and select the "+⚡" to create a new local Azure function project.
+1. In Visual Studio Code, click on the Azure extension (or press `SHIFT+ALT+A`).
+1. Mouse-over `WORKSPACE` and select `Create Function` (i.e., +⚡) to create a new local Azure function project.
 1. Select `Browse`, choose/create the folder where you want to create your Azure Function code (e.g., `myrepo/src/myfunc`) then use the selections below when creating the project:
 
    | Selection       | Value                       |
@@ -27,7 +26,7 @@ Before you get started, make sure you have the following requirements in place:
    | Runtime         | `.NET 7 Isolated`           |
    | Template        | `Http trigger`              |
    | Function name   | `MyChatFunction`            |
-   | Namespace       | `My.ChatFunction`           |
+   | Namespace       | `My.MyChatFunction`         |
    | Access rightgs  | `Function`                  |
 
 ## Add Semantic Kernel to your Azure Function
@@ -57,7 +56,8 @@ In this section will create a minimal implementation for using Semantic Kernel a
         config.AddEnvironmentVariables();
     });
 
-    hostBuilder.Build().Run();
+    IHost host = hostBuilder.Build();
+    host.Run();
     ```
 
 1. Add the Semantic Kernel by adding a `ConfigureServices` call below the existing `ConfigureAppConfiguration` and populating it with an instance of the kernel.
@@ -69,15 +69,16 @@ In this section will create a minimal implementation for using Semantic Kernel a
     {
         services.AddSingleton<IKernel>(sp =>
         {
+            IConfiguration configuration = sp.GetRequiredService<IConfiguration>();
+            string apiKey = configuration["OPENAI_APIKEY"];
+
             IKernel kernel = new KernelBuilder()
                 .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
+                .Configure(config => config.AddOpenAIChatCompletionService(
+                    serviceId: "chat",
+                    modelId: "gpt-3.5-turbo",
+                    apiKey: apiKey))
                 .Build();
-
-            string apiKey = sp.GetRequiredService<IConfiguration>()["OPENAI_APIKEY"];
-            kernel.Config.AddOpenAIChatCompletionService(
-                serviceId: "chat",
-                modelId: "gpt-3.5-turbo",
-                apiKey: apiKey);
 
             return kernel;
         });
@@ -156,17 +157,18 @@ In this section will create a minimal implementation for using Semantic Kernel a
     {
         services.AddSingleton<IKernel>(sp =>
         {
-            // Construct a semantic kernel.
+            // Retrieve the OpenAI API key from the configuration/environment.
+            IConfiguration configuration = sp.GetRequiredService<IConfiguration>();
+            string apiKey = configuration["OPENAI_APIKEY"];
+
+            // Construct a semantic kernel and connect the OpenAI chat completion APIs.
             IKernel kernel = new KernelBuilder()
                 .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
+                .Configure(config => config.AddOpenAIChatCompletionService(
+                    serviceId: "chat",
+                    modelId: "gpt-3.5-turbo",
+                    apiKey: apiKey))
                 .Build();
-
-            // Connect the OpenAI chat completion APIs to the Semantic Kernel.
-            string apiKey = sp.GetRequiredService<IConfiguration>()["OPENAI_APIKEY"];
-            kernel.Config.AddOpenAIChatCompletionService(
-                serviceId: "chat", // A local identifier for the given AI service.
-                modelId: "gpt-3.5-turbo", // OpenAI model name
-                apiKey: apiKey);
 
             return kernel;
         });
@@ -181,7 +183,9 @@ In this section will create a minimal implementation for using Semantic Kernel a
         services.AddSingleton<ChatHistory>(sp =>
             sp.GetRequiredService<IChatCompletion>().CreateNewChat(instructions));
     });
-    hostBuilder.Build().Run();
+
+    IHost host = hostBuilder.Build();
+    host.Run();
     ```
     </details>
 
@@ -195,7 +199,7 @@ In this section will create a minimal implementation for using Semantic Kernel a
     using Microsoft.Extensions.Logging;
     using Microsoft.SemanticKernel.AI.ChatCompletion;
 
-    namespace My.ChatFunction
+    namespace My.MyChatFunction
     {
         public class MyChatFunction
         {
@@ -247,19 +251,104 @@ In this section will create a minimal implementation for using Semantic Kernel a
    dotnet run http://localhost:7071/api/MyChatFunction
    ```
 
-## Deploy Azure Resources
-> **WORK IN-PROGRESS**
-### Sign-up for Azure
-Below are the steps to create an Azure account and subscription.
-    
-1. If you don't already have an Azure account go to https://azure.microsoft.com, click on `Try Azure for free`, and select `Start Free` to start creating a free Azure account with your Microsoft or GitHub account.
-
-1. After signing in, you will be prompted to enter some information.
-
-    > This tutorial uses **Azure Functions** ([pricing](https://azure.microsoft.com/en-us/pricing/details/functions/)) and **Azure Cognitive Search** ([pricing](https://azure.microsoft.com/pricing/details/search/)) that may incur a monthly cost. Visit [here](https://azure.microsoft.com/free/cognitive-search/) to get some free Azure credits to get you started.
-
 # Chapter 2: Memory Stores and Your Data
->TODO
+In this section will augment out simple chat application with our own personal information. In this example we will use Microsoft's 2022 10-K financial report.
+
+## Configure your environment
+Before you get started, make sure you have the following additional requirements in place:
+- [Docker Desktop](https://www.docker.com/products/docker-desktop) for hosting the [Qdrant](https://github.com/qdrant/qdrant) vector search engine.
+
+## Deploy and start Qdrant VectorDB locally
+1. Open a terminal and pull down the container image for Qdrant.
+    ```bash
+    docker pull qdrant/qdrant
+    ```
+1. Start running the Qdrant container on port 6333
+    ```bash
+    docker run -p 6333:6333 qdrant/qdrant
+    ```
+
+## Qdrant
+> TODO explain vector DBs
+1. Open a terminal window, change to the directory with your project file (e.g., `myrepo/src/myfunc`), 
+   and run the `dotnet` commands below to add Semantic Kernel Qdrant Memory and BlingFire tokenizer to your project.
+    ```bash
+    dotnet add package Microsoft.SemanticKernel.Connectors.Memory.Qdrant --prerelease
+    dotnet add package BlingFireNuget
+    ```
+1. {add memory store}
+    ```csharp
+    using Microsoft.SemanticKernel.Connectors.Memory.Qdrant;
+    using BlingFire;
+    ```
+    ```csharp
+    QdrantMemoryStore memoryStore = new QdrantMemoryStore(
+        host: "http://localhost",
+        port: 6333,
+        vectorSize: 1536,
+        logger: sp.GetRequiredService<ILogger<QdrantMemoryStore>>());
+    ```
+1. {add to SK and add embedding generation, needs explanation}
+    > TODO explain embeddings
+    ```csharp
+     IKernel kernel = new KernelBuilder()
+        .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
+        .Configure(config => config.AddOpenAIChatCompletionService(
+            serviceId: "chat",
+            modelId: "gpt-3.5-turbo",
+            apiKey: apiKey))
+        .Configure(c => c.AddOpenAIEmbeddingGenerationService(
+            "text-embedding-ada-002",
+            "text-embedding-ada-002",
+            apiKey))
+        .WithMemoryStorage(memoryStore)
+        .Build();
+    ```
+
+1. {import data into vector db before the call to host.run}
+    > This code reads a text file, splits it into sentences, and saves each sentence in a memory collection.
+    ```csharp
+    string[] filePaths = new string[] { "ms10k.txt" };
+    IKernel kernel = host.Services.GetRequiredService<IKernel>();
+    const string memoryCollectionName = "Microsoft10K";
+    foreach (string filePath in filePaths)
+    {
+        string text = File.ReadAllText(filePath);
+        IEnumerable<string> sentences = BlingFireUtils.GetSentences(text);
+
+        int i = 0;
+        foreach (var sentence in sentences)
+        {
+            kernel.Memory.SaveInformationAsync(
+                collection: memoryCollectionName,
+                text: sentence,
+                id: (i++).ToString(),
+                description: sentence)
+                .GetAwaiter().GetResult();
+        }
+    }
+    ```
 
 # Chapter 3: Azure Cognitive Search and Retrieval Augmented Generation
 >TODO
+
+# Appendix
+## Deploy Azure Function to Azure
+> **WORK IN-PROGRESS**
+1. If you don't already have an Azure account go to https://azure.microsoft.com, click on `Try Azure for free`, and select `Start Free` to start creating a free Azure account with your Microsoft or GitHub account. After signing in, you will be prompted to enter some information.
+
+    > This tutorial uses **Azure Functions** ([pricing](https://azure.microsoft.com/en-us/pricing/details/functions/)) and **Azure Cognitive Search** ([pricing](https://azure.microsoft.com/pricing/details/search/)) that may incur a monthly cost. Visit [here](https://azure.microsoft.com/free/cognitive-search/) to get some free Azure credits to get you started.
+
+1. In Visual Studio Code, click on the Azure extension (or press `SHIFT+ALT+A`)
+1. Mouse-over `RESOURCES` again and select `Create Resource` (i.e., +), select `Create Function App in Azure...`, select your Azure Subscription.
+1. Enter a name for your deployed function, for example `fn-mychatfunction`.
+1. Set the runtime stack to `.NET 7 Isolated` and choose a location in which to deploy your Azure Function.
+    > If you don't have a preference, choose the recommended region.
+1. Wait until the `Create Function App` completes, which should only take a minute or so.
+
+1. Mouse-over `WORKSPACE` and select `Deploy` (i.e., ☁️) then `Deploy to Function App`. 
+1. Select the same Azure Subscription in which you created the Azure Function in Azure, then select the Azure Function you created above (e.g., `fn-mychatfunction`).
+    > It may take a minute or two to complete the deployment.
+
+
+

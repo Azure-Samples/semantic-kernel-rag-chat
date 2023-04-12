@@ -35,9 +35,9 @@ hostBuilder.ConfigureServices(services =>
                 modelId: "gpt-3.5-turbo",
                 apiKey: apiKey))
             .Configure(c => c.AddOpenAIEmbeddingGenerationService(
-                "text-embedding-ada-002",
-                "text-embedding-ada-002",
-                apiKey))
+                serviceId: "text-embedding-ada-002",
+                modelId: "text-embedding-ada-002",
+                apiKey: apiKey))
             .WithMemoryStorage(memoryStore)
             .Build();
 
@@ -57,18 +57,26 @@ hostBuilder.ConfigureServices(services =>
 IHost host = hostBuilder.Build();
 
 // This code reads a text file, splits it into sentences, and saves each sentence in a memory collection.
-string[] filePaths = new string[] { "ms10k.txt" };
 IKernel kernel = host.Services.GetRequiredService<IKernel>();
-foreach (string filePath in filePaths)
+ILogger<Program> logger = host.Services.GetRequiredService<ILogger<Program>>();
+if ((await kernel.Memory.GetCollectionsAsync()).Any())
 {
-    string text = File.ReadAllText(filePath);
-    IEnumerable<string> sentences = BlingFireUtils.GetSentences(text);
+    logger.LogInformation("Data already in memory store - skipping import.");
+}
+else
+{
+    string filePath = "{path to text file}"; // Example: c:/src/repo/data/ms10k.txt
+    const string memoryCollectionName = "{collectioName}"; // Example: ms10k
+
+    IEnumerable<string> sentences =
+        BlingFireUtils.GetSentences(File.ReadAllText(filePath));
 
     int i = 0;
     foreach (var sentence in sentences)
     {
+        if (i % 100 == 0) logger.LogInformation($"{i}/{sentences.Count()}");
         kernel.Memory.SaveInformationAsync(
-            collection: "Microsoft10K",
+            collection: memoryCollectionName,
             text: sentence,
             id: (i++).ToString(),
             description: sentence)

@@ -252,21 +252,13 @@ In this section will create a minimal implementation for using Semantic Kernel a
    ```
 
 # Chapter 2: Memory Stores and Your Data
-In this section will augment out simple chat application with our own personal information. In this example we will use Microsoft's 2022 10-K financial report.
+> TODO describe
 
 ## Configure your environment
 Before you get started, make sure you have the following additional requirements in place:
 - [Docker Desktop](https://www.docker.com/products/docker-desktop) for hosting the [Qdrant](https://github.com/qdrant/qdrant) vector search engine.
 
-## Deploy and start Qdrant VectorDB locally
-1. Open a terminal and pull down the container image for Qdrant.
-    ```bash
-    docker pull qdrant/qdrant
-    ```
-1. Start running the Qdrant container on port 6333
-    ```bash
-    docker run -p 6333:6333 qdrant/qdrant
-    ```
+
 
 ## Qdrant
 > TODO explain vector DBs
@@ -298,8 +290,8 @@ Before you get started, make sure you have the following additional requirements
             modelId: "gpt-3.5-turbo",
             apiKey: apiKey))
         .Configure(c => c.AddOpenAIEmbeddingGenerationService(
-            "text-embedding-ada-002",
-            "text-embedding-ada-002",
+            serviceId: "embedding",
+            modelId: "text-embedding-ada-002",
             apiKey))
         .WithMemoryStorage(memoryStore)
         .Build();
@@ -307,26 +299,38 @@ Before you get started, make sure you have the following additional requirements
 
 1. {import data into vector db before the call to host.run}
     > This code reads a text file, splits it into sentences, and saves each sentence in a memory collection.
-    ```csharp
-    string[] filePaths = new string[] { "ms10k.txt" };
-    IKernel kernel = host.Services.GetRequiredService<IKernel>();
-    const string memoryCollectionName = "Microsoft10K";
-    foreach (string filePath in filePaths)
-    {
-        string text = File.ReadAllText(filePath);
-        IEnumerable<string> sentences = BlingFireUtils.GetSentences(text);
 
-        int i = 0;
-        foreach (var sentence in sentences)
-        {
-            kernel.Memory.SaveInformationAsync(
-                collection: memoryCollectionName,
-                text: sentence,
-                id: (i++).ToString(),
-                description: sentence)
-                .GetAwaiter().GetResult();
-        }
+    > We have included Microsoft's 2022 10-K financial report to use as example data. You can find it in this repo at `data/ms10k.txt`.
+    ```csharp
+    string filePath = "{path to text file}"; // Example: c:/src/repo/data/ms10k.txt
+    const string memoryCollectionName = "{collectioName}"; // Example: ms10k
+    
+    IKernel kernel = host.Services.GetRequiredService<IKernel>();
+    
+    IEnumerable<string> sentences = 
+        BlingFireUtils.GetSentences(File.ReadAllText(filePath));
+
+    int i = 0;
+    foreach (var sentence in sentences)
+    {
+        if (i % 100 == 0) Console.WriteLines($"{i}/{sentences.Count()}");
+        kernel.Memory.SaveInformationAsync(
+            collection: memoryCollectionName,
+            text: sentence,
+            id: (i++).ToString(),
+            description: sentence)
+            .GetAwaiter().GetResult();
     }
+    ```
+
+## Deploy and start Qdrant VectorDB locally
+1. Open a terminal and pull down the container image for Qdrant.
+    ```bash
+    docker pull qdrant/qdrant
+    ```
+1. Start running the Qdrant container on port 6333
+    ```bash
+    docker run -p 6333:6333 qdrant/qdrant
     ```
 
 # Chapter 3: Azure Cognitive Search and Retrieval Augmented Generation

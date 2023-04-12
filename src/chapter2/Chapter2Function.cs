@@ -29,9 +29,9 @@ namespace My.MyChatFunction
         {
             _logger.LogInformation("C# HTTP trigger function processed a request.");
 
-            var message = await SearchMemoriesAsync(_kernel, await req.ReadAsStringAsync() ?? string.Empty);
-            _chatHistory!.AddMessage("user", message);
             //_chatHistory!.AddMessage("user", await req.ReadAsStringAsync() ?? string.Empty);
+            string message = await SearchMemoriesAsync(_kernel, await req.ReadAsStringAsync() ?? string.Empty);
+            _chatHistory!.AddMessage("user", message);
 
             string reply = await _chat.GenerateMessageAsync(_chatHistory, new ChatRequestSettings());
 

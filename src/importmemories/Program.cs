@@ -1,9 +1,6 @@
-﻿using System.Reflection.Metadata.Ecma335;
-using BlingFire;
-using Microsoft.Extensions.Logging;
+﻿using BlingFire;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.Memory.Qdrant;
-using Microsoft.SemanticKernel.Memory;
 
 internal class Program
 {
@@ -11,12 +8,12 @@ internal class Program
     /// This program imports text files into a Qdrant VectorDB using Semantic Kernel.
     /// </summary>
     /// <param name="qdrantUrl">The URL to a running Qdrant VectorDB (e.g., http://localhost:6333)</param>
-    /// <param name="collectionName">Name of the database collection in which to import (e.g., "mycollection").</param>
-    /// <param name="textFiles">Text files to import.</param>
-    static async Task Main(string qdrantUrl, string collectionName, params FileInfo[] textFiles)
+    /// <param name="collection">Name of the database collection in which to import (e.g., "mycollection").</param>
+    /// <param name="textFile">Text files to import.</param>
+    static async Task Main(string qdrantUrl, string collection, params FileInfo[] textFile)
     {
         // Validate arguments.
-        if (textFiles.Length == 0)
+        if (textFile.Length == 0)
         {
             Console.Error.WriteLine("No text files provided. Use '--help' for usage.");
             return;
@@ -46,40 +43,40 @@ internal class Program
             .WithMemoryStorage(memoryStore)
             .Build();
 
-        
-        
         // Use sequential memory IDs; this makes it easier to retrieve sentences near a given sentence.
         int memoryId = 0;
 
         // Import the text files.
         int fileCount = 0;
-        foreach (FileInfo textFile in textFiles)
+        foreach (FileInfo fileInfo in textFile)
         {
-            Console.WriteLine($"Importing [{++fileCount}/{textFiles.Length}] {textFile.FullName}");
-            
+            Console.WriteLine($"Importing [{++fileCount}/{fileInfo.Length}] {fileInfo.FullName}");
+
             // Read the text file.
-            string text = File.ReadAllText(textFile.FullName);
+            string text = File.ReadAllText(fileInfo.FullName);
 
             // Split the text into sentences.
             string[] sentences = BlingFireUtils.GetSentences(text).ToArray();
 
             // Save each sentence to the memory store.
             int sentenceCount = 0;
-            foreach (var sentence in sentences)
+            foreach (string sentence in sentences)
             {
                 ++sentenceCount;
                 if (sentenceCount % 10 == 0)
                 {
                     // Log progress every 10 sentences.
-                    Console.WriteLine($"[{fileCount}/{textFiles.Length}] {textFile.FullName}: {sentenceCount}/{sentences.Length}");
+                    Console.WriteLine($"[{fileCount}/{fileInfo.Length}] {fileInfo.FullName}: {sentenceCount}/{sentences.Length}");
                 }
 
                 await kernel.Memory.SaveInformationAsync(
-                    collection: collectionName,
+                    collection: collection,
                     text: sentence,
                     id: memoryId++.ToString(),
                     description: sentence);
             }
         }
+
+        Console.WriteLine("Done!");
     }
 }

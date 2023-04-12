@@ -56,8 +56,7 @@ In this section will create a minimal implementation for using Semantic Kernel a
         config.AddEnvironmentVariables();
     });
 
-    IHost host = hostBuilder.Build();
-    host.Run();
+    hostBuilder.Build().Run();
     ```
 
 1. Add the Semantic Kernel by adding a `ConfigureServices` call below the existing `ConfigureAppConfiguration` and populating it with an instance of the kernel.
@@ -184,8 +183,7 @@ In this section will create a minimal implementation for using Semantic Kernel a
             sp.GetRequiredService<IChatCompletion>().CreateNewChat(instructions));
     });
 
-    IHost host = hostBuilder.Build();
-    host.Run();
+    hostBuilder.Build().Run();
     ```
     </details>
 
@@ -251,27 +249,24 @@ In this section will create a minimal implementation for using Semantic Kernel a
    dotnet run http://localhost:7071/api/MyChatFunction
    ```
 
+   
 # Chapter 2: Memory Stores and Your Data
-> TODO describe
+> TODO: explain memory stores and how they are used in the Semantic Kernel
 
 ## Configure your environment
 Before you get started, make sure you have the following additional requirements in place:
 - [Docker Desktop](https://www.docker.com/products/docker-desktop) for hosting the [Qdrant](https://github.com/qdrant/qdrant) vector search engine.
 
-
-
-## Qdrant
+## Vector Search Engine (Qdrant)
 > TODO explain vector DBs
 1. Open a terminal window, change to the directory with your project file (e.g., `myrepo/src/myfunc`), 
    and run the `dotnet` commands below to add Semantic Kernel Qdrant Memory and BlingFire tokenizer to your project.
     ```bash
     dotnet add package Microsoft.SemanticKernel.Connectors.Memory.Qdrant --prerelease
-    dotnet add package BlingFireNuget
     ```
 1. {add memory store}
     ```csharp
     using Microsoft.SemanticKernel.Connectors.Memory.Qdrant;
-    using BlingFire;
     ```
     ```csharp
     QdrantMemoryStore memoryStore = new QdrantMemoryStore(
@@ -297,41 +292,83 @@ Before you get started, make sure you have the following additional requirements
         .Build();
     ```
 
-1. {import data into vector db before the call to host.run}
-    > This code reads a text file, splits it into sentences, and saves each sentence in a memory collection.
+1. Open `MyChatFunction.cs` and replace where we add the user's message to the chat history
+   (`_chatHistory!.AddMessage("user",...`) with a call that will search for related memories and include them
+   in the user's message to the AI.
+	```csharp
+    // _chatHistory!.AddMessage("user", await req.ReadAsStringAsync() ?? string.Empty);
+    string message = await SearchMemoriesAsync(_kernel, await req.ReadAsStringAsync() ?? string.Empty);
+    _chatHistory!.AddMessage("user", message);
+	```
 
-    > We have included Microsoft's 2022 10-K financial report to use as example data. You can find it in this repo at `data/ms10k.txt`.
+1. And finally we'll add the `SearchMemoriesAsync` method to this class.
+    > The strategy of this memory search is to find memories that are similar to the user's input and then
+    > include those memories in the user's message to the AI. This is done by first searching for memories
+    > that are similar to the user's input and including the previous and subsequent memories. 
+    > This is done to ensure that the AI has context for the user's input.
     ```csharp
-    string filePath = "{path to text file}"; // Example: c:/src/repo/data/ms10k.txt
-    const string memoryCollectionName = "{collectioName}"; // Example: ms10k
-    
-    IKernel kernel = host.Services.GetRequiredService<IKernel>();
-    
-    IEnumerable<string> sentences = 
-        BlingFireUtils.GetSentences(File.ReadAllText(filePath));
-
-    int i = 0;
-    foreach (var sentence in sentences)
+    private async Task<string> SearchMemoriesAsync(IKernel kernel, string query)
     {
-        if (i % 100 == 0) Console.WriteLines($"{i}/{sentences.Count()}");
-        kernel.Memory.SaveInformationAsync(
-            collection: memoryCollectionName,
-            text: sentence,
-            id: (i++).ToString(),
-            description: sentence)
-            .GetAwaiter().GetResult();
+        const string collectionName = "ms10k";
+
+        StringBuilder result = new StringBuilder();
+        result.Append("The below is relevant information.\n[START INFO]");
+        
+        // Search for memories that match the user's input.
+        IAsyncEnumerable<MemoryQueryResult> queryResults = 
+            kernel.Memory.SearchAsync(collectionName, query, limit: 3, minRelevanceScore: 0.77);
+
+        // For each memory found, get previous and subsequent memories.
+        await foreach (MemoryQueryResult r in queryResults)
+        {
+            int id = int.Parse(r.Metadata.Id);
+            MemoryQueryResult? rb2 = await kernel.Memory.GetAsync(collectionName, (id - 2).ToString());
+            MemoryQueryResult? rb = await kernel.Memory.GetAsync(collectionName, (id - 1).ToString());
+            MemoryQueryResult? ra = await kernel.Memory.GetAsync(collectionName, (id + 1).ToString());
+            MemoryQueryResult? ra2 = await kernel.Memory.GetAsync(collectionName, (id + 2).ToString());
+
+            result.Append("\n " + rb2!.Metadata.Id + ": " + rb2.Metadata.Description + "\n");
+            result.Append("\n " + rb!.Metadata.Description + "\n");
+            result.Append("\n " + r!.Metadata.Description + "\n");
+            result.Append("\n " + ra!.Metadata.Description + "\n");
+            result.Append("\n " + ra2!.Metadata.Id + ": " + ra2.Metadata.Description + "\n");
+        }
+
+        result.Append("\n[END INFO]");
+        result.Append($"\n{query}");
+
+        return result.ToString();
     }
     ```
-
-## Deploy and start Qdrant VectorDB locally
-1. Open a terminal and pull down the container image for Qdrant.
+   
+## Deploy Qdrant VectorDB locally and Populate Data
+1. Open a terminal and use Docker to pull down the container image for Qdrant.
     ```bash
     docker pull qdrant/qdrant
     ```
-1. Start running the Qdrant container on port 6333
+1. Change directory to this repo and create a `./data/qdrant` directory for Qdrant to use as persistent storage. 
+   Then start the Qdrant container on port `6333` using the `./data/qdrant` folder as the persistent storage location.
     ```bash
-    docker run -p 6333:6333 qdrant/qdrant
+    cd /src/semantic-kernel-rag-chat
+    mkdir ./data/qdrant
+    docker run -p 6333:6333 -v $(pwd)/data/qdrant:/qdrant/storage qdrant/qdrant
     ```
+1. Open a second terminal, change directory to this repo, and run the `importmemories` tool to populate the vector database with your data.
+    > Make sure the `--collection` argument matches the `collectionName` variable in the `SearchMemoriesAsync` method above.
+    
+    > **Note:** This may take several minutes to several hours depending on the size of your data. This repo
+    > contains the Microsoft's 2022 10-K financial report data as an example which should normally take a only 
+    > about 15 minutes to import.
+        
+	```bash
+    cd /src/semantic-kernel-rag-chat
+    cd src/importmemories
+    dotnet run -- --qdrant-url http://localhost:6333 --collection ms10k --text-file ../../data/ms10k.txt
+	```
+    > When importing your own data, try to import all files at the same time using multiple `--text-file` arguments. 
+    > This example leverages incremental indexes which are best constructed when all data is present. 
+    
+    > If you want to reset the memory store, delete and recreate the directory in step 2, or create a new directory to use.
 
 # Chapter 3: Azure Cognitive Search and Retrieval Augmented Generation
 >TODO

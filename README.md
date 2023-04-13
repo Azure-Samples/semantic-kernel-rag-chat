@@ -5,7 +5,9 @@ This progressive tutorial is for building your own AI chat application informed 
 
 In all, this tutorial creates a minimal implementation for using [Semantic Kernel](https://aka.ms/skrepo) as a foundation for enabling enterprise data ingestion, long-term memory, plug-ins, and more.
 
-# Chapter 1: Chat
+# Chapter 1: ChatGPT
+In this section will create a minimal chat implementation for using Semantic Kernel as a foundation for 
+enterprise data ingestion, long-term memory, plug-ins, and more. 
 
 ## Configure your environment
 Before you get started, make sure you have the following requirements in place:
@@ -14,6 +16,7 @@ Before you get started, make sure you have the following requirements in place:
   - [Azure Functions Extension](https://aka.ms/azfn/vscode)
 - [.NET 7.0 SDK](https://aka.ms/net70) for building and deploying .NET 7 projects.
 - [Azure Function Core Tools 4.x](https://aka.ms/azfn/coretools) for managing Azure Functions
+- [OpenAI API key](https://platform.openai.com/account/api-keys) for using the OpenAI API (or click [here](https://platform.openai.com/signup) to signup).
 
 ## Create an Azure Function project.
 1. In Visual Studio Code, click on the Azure extension (or press `SHIFT+ALT+A`).
@@ -27,11 +30,9 @@ Before you get started, make sure you have the following requirements in place:
    | Template        | `Http trigger`              |
    | Function name   | `MyChatFunction`            |
    | Namespace       | `My.MyChatFunction`         |
-   | Access rightgs  | `Function`                  |
+   | Access rights   | `Function`                  |
 
 ## Add Semantic Kernel to your Azure Function
-In this section will create a minimal implementation for using Semantic Kernel as a foundation for enabling scenarios such as enterprise data ingestion, long-term memory, plug-ins, and more. 
-
 1. Open a terminal window, change to the directory with your project file (e.g., `myrepo/src/myfunc`), 
    and run the `dotnet` command below to add the Semantic Kernel NuGet package to your project.
    ```bash
@@ -62,7 +63,7 @@ In this section will create a minimal implementation for using Semantic Kernel a
 1. Add the Semantic Kernel by adding a `ConfigureServices` call below the existing `ConfigureAppConfiguration` and populating it with an instance of the kernel.
     > The kernel below is configured to use an OpenAI ChatGPT model (e.g., gpt-3.5-turbo) for chat completions.
 
-    > TODO: Add instructions for getting an [OpenAI API key](https://platform.openai.com/account/api-keys) and setting the `OPENAI_APIKEY` environment variable.
+    > TODO: Add instructions for setting the `OPENAI_APIKEY` environment variable.
     ```csharp
     hostBuilder.ConfigureServices(services =>
     {
@@ -118,14 +119,10 @@ In this section will create a minimal implementation for using Semantic Kernel a
     [Function("MyChatFunction")]
     public async Task<HttpResponseData> Run([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
     {
-        _logger.LogInformation("C# HTTP trigger function processed a request.");
-
         _chatHistory!.AddMessage("user", await req.ReadAsStringAsync() ?? string.Empty);
-
         string reply = await _chat.GenerateMessageAsync(_chatHistory, new ChatRequestSettings());
-
         _chatHistory.AddMessage("assistant", reply);
-
+        
         HttpResponseData response = req.CreateResponse(HttpStatusCode.OK);
         response.WriteString(reply);
         return response;
@@ -215,15 +212,13 @@ In this section will create a minimal implementation for using Semantic Kernel a
             [Function("MyChatFunction")]
             public async Task<HttpResponseData> Run([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
             {
-                _logger.LogInformation("C# HTTP trigger function processed a request.");
-
                 // Add the user's chat message to the history.
                 _chatHistory!.AddMessage("user", await req.ReadAsStringAsync() ?? string.Empty);
 
-                // Send the history to the AI and receive a reply.
+                // Send the chat history to the AI and receive a reply.
                 string reply = await _chat.GenerateMessageAsync(_chatHistory, new ChatRequestSettings());
 
-                // Add the AI's reply to the chat history.
+                // Add the AI's reply to the chat history for next time.
                 _chatHistory.AddMessage("assistant", reply);
 
                 // Send the AI's response back to the caller.
@@ -248,36 +243,54 @@ In this section will create a minimal implementation for using Semantic Kernel a
    ```bash
    dotnet run http://localhost:7071/api/MyChatFunction
    ```
-
+1. Type a message and press enter to verify that we are able to chat with the AI!
+    ```
+    Input: Hello, how are you?
+    AI: Hello! As an AI language model, I don't have feelings, but I'm functioning properly and ready to 
+    assist you. How can I help you today?
+    ```
    
-# Chapter 2: Memory Stores and Your Data
-> TODO: explain memory stores and how they are used in the Semantic Kernel
+ 1. Now let's try to ask about something that is not in the current AI model, such as "What was Microsoft's total revenue for 2022?"
+    ```
+    Input: What was Microsoft's cloud revenue for 2022?
+    AI: I'm sorry, but I cannot provide information about Microsoft's cloud revenue for 2022 as it is not yet 
+    available. Microsoft's fiscal year 2022 ends on June 30, 2022, and the company typically releases its 
+    financial results a few weeks after the end of the fiscal year. However, Microsoft's cloud revenue for 
+    fiscal year 2021 was $59.5 billion, an increase of 34% from the previous year.
+    ```
+    Next we'll add a knowledge base to the chat function to answer this question.
+   
+# Chapter 2: Memories and Your Data
+Semantic Kernel's memory stores are used to integrate data from your knowledge base into AI interactions.
+We use [embeddings](https://platform.openai.com/docs/guides/embeddings) to encode data and a vector database.
+Using a vector database also allows us to use vector search engines to quickly find the most relevant data for a given query.
+In this chapter, we'll add a memory store to our chat function, import the Microsoft revenue data, and use it to answer 
+the question Chapter 1.
 
 ## Configure your environment
 Before you get started, make sure you have the following additional requirements in place:
 - [Docker Desktop](https://www.docker.com/products/docker-desktop) for hosting the [Qdrant](https://github.com/qdrant/qdrant) vector search engine.
 
-## Vector Search Engine (Qdrant)
-> TODO explain vector DBs
+## Add a memory store in our Azure Function
 1. Open a terminal window, change to the directory with your project file (e.g., `myrepo/src/myfunc`), 
-   and run the `dotnet` commands below to add Semantic Kernel Qdrant Memory and BlingFire tokenizer to your project.
+   and run the `dotnet` commands below to add Semantic Kernel Qdrant Memory Store to your project.
     ```bash
     dotnet add package Microsoft.SemanticKernel.Connectors.Memory.Qdrant --prerelease
     ```
-1. {add memory store}
+
+1. Open your Program code file (e.g., `Program.cs`) and add the Qdrant memory store using statement to the top.
     ```csharp
     using Microsoft.SemanticKernel.Connectors.Memory.Qdrant;
     ```
+
+    Rewrite where we instantiate the Semantic Kernel to include a Qdrant memory store and an OpenAI embedding generation service.
     ```csharp
     QdrantMemoryStore memoryStore = new QdrantMemoryStore(
         host: "http://localhost",
         port: 6333,
         vectorSize: 1536,
         logger: sp.GetRequiredService<ILogger<QdrantMemoryStore>>());
-    ```
-1. {add to SK and add embedding generation, needs explanation}
-    > TODO explain embeddings
-    ```csharp
+
      IKernel kernel = new KernelBuilder()
         .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
         .Configure(config => config.AddOpenAIChatCompletionService(
@@ -309,29 +322,28 @@ Before you get started, make sure you have the following additional requirements
     ```csharp
     private async Task<string> SearchMemoriesAsync(IKernel kernel, string query)
     {
-        const string collectionName = "ms10k";
-
         StringBuilder result = new StringBuilder();
         result.Append("The below is relevant information.\n[START INFO]");
         
-        // Search for memories that match the user's input.
+        // Search for memories that are similar to the user's input.
+        const string memoryCollectionName = "ms10k";
         IAsyncEnumerable<MemoryQueryResult> queryResults = 
-            kernel.Memory.SearchAsync(collectionName, query, limit: 3, minRelevanceScore: 0.77);
+            kernel.Memory.SearchAsync(memoryCollectionName, query, limit: 3, minRelevanceScore: 0.77);
 
-        // For each memory found, get previous and subsequent memories.
+        // For each memory found, try to get previous and next memories.
         await foreach (MemoryQueryResult r in queryResults)
         {
             int id = int.Parse(r.Metadata.Id);
-            MemoryQueryResult? rb2 = await kernel.Memory.GetAsync(collectionName, (id - 2).ToString());
-            MemoryQueryResult? rb = await kernel.Memory.GetAsync(collectionName, (id - 1).ToString());
-            MemoryQueryResult? ra = await kernel.Memory.GetAsync(collectionName, (id + 1).ToString());
-            MemoryQueryResult? ra2 = await kernel.Memory.GetAsync(collectionName, (id + 2).ToString());
+            MemoryQueryResult? rb2 = await kernel.Memory.GetAsync(memoryCollectionName, (id - 2).ToString());
+            MemoryQueryResult? rb = await kernel.Memory.GetAsync(memoryCollectionName, (id - 1).ToString());
+            MemoryQueryResult? ra = await kernel.Memory.GetAsync(memoryCollectionName, (id + 1).ToString());
+            MemoryQueryResult? ra2 = await kernel.Memory.GetAsync(memoryCollectionName, (id + 2).ToString());
 
-            result.Append("\n " + rb2!.Metadata.Id + ": " + rb2.Metadata.Description + "\n");
-            result.Append("\n " + rb!.Metadata.Description + "\n");
-            result.Append("\n " + r!.Metadata.Description + "\n");
-            result.Append("\n " + ra!.Metadata.Description + "\n");
-            result.Append("\n " + ra2!.Metadata.Id + ": " + ra2.Metadata.Description + "\n");
+            if (rb2 != null) result.Append("\n " + rb2.Metadata.Id + ": " + rb2.Metadata.Description + "\n");
+            if (rb != null) result.Append("\n " + rb.Metadata.Description + "\n");
+            if (r != null) result.Append("\n " + r.Metadata.Description + "\n");
+            if (ra != null) result.Append("\n " + ra.Metadata.Description + "\n");
+            if (ra2 != null) result.Append("\n " + ra2.Metadata.Id + ": " + ra2.Metadata.Description + "\n");
         }
 
         result.Append("\n[END INFO]");
@@ -340,19 +352,178 @@ Before you get started, make sure you have the following additional requirements
         return result.ToString();
     }
     ```
+
+1. The complete code files (with additional comments).
+    <details>
+    <summary>Program.cs</summary>
+    
+    ```csharp
+    using Microsoft.Extensions.Configuration;
+    using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Hosting;
+    using Microsoft.Extensions.Logging;
+    using Microsoft.SemanticKernel;
+    using Microsoft.SemanticKernel.AI.ChatCompletion;
+    using Microsoft.SemanticKernel.Connectors.Memory.Qdrant;
+
+    var hostBuilder = new HostBuilder()
+        .ConfigureFunctionsWorkerDefaults();
+
+    hostBuilder.ConfigureAppConfiguration((context, config) =>
+    {
+        config.AddEnvironmentVariables();
+    });
+
+    hostBuilder.ConfigureServices(services =>
+    {
+        services.AddSingleton<IKernel>(sp =>
+        {
+            // Retrieve the OpenAI API key from the configuration/environment.
+            IConfiguration configuration = sp.GetRequiredService<IConfiguration>();
+            string apiKey = configuration["OPENAI_APIKEY"];
+
+            // Create a memory store that will be used to store memories.
+            QdrantMemoryStore memoryStore = new QdrantMemoryStore(
+               host: "http://localhost",
+               port: 6333,
+               vectorSize: 1536,
+               logger: sp.GetRequiredService<ILogger<QdrantMemoryStore>>());
+
+            // Create the kerne with chat completion, embedding generation, and memory storage.
+            IKernel kernel = new KernelBuilder()
+                .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
+                .Configure(config => config.AddOpenAIChatCompletionService(
+                    serviceId: "chat",
+                    modelId: "gpt-3.5-turbo",
+                    apiKey: apiKey))
+                .Configure(c => c.AddOpenAIEmbeddingGenerationService(
+                    serviceId: "text-embedding-ada-002",
+                    modelId: "text-embedding-ada-002",
+                    apiKey: apiKey))
+                .WithMemoryStorage(memoryStore)
+                .Build();
+
+            return kernel;
+        });
+
+        // Register the chat completion service.
+        services.AddSingleton<IChatCompletion>(sp =>
+        sp.GetRequiredService<IKernel>().GetService<IChatCompletion>());
+
+        // Create a new chat history.
+        const string instructions = "You are a helpful friendly assistant.";
+        services.AddSingleton<ChatHistory>(sp =>
+            sp.GetRequiredService<IChatCompletion>().CreateNewChat(instructions));
+    });
+
+    hostBuilder.Build().Run();
+    ```
+    </details>
+
+    <details>
+    <summary>MyChatFunction.cs</summary>
+
+    ```csharp
+    using System.Net;
+    using System.Text;
+    using Microsoft.Azure.Functions.Worker;
+    using Microsoft.Azure.Functions.Worker.Http;
+    using Microsoft.Extensions.Logging;
+    using Microsoft.SemanticKernel;
+    using Microsoft.SemanticKernel.AI.ChatCompletion;
+    using Microsoft.SemanticKernel.Memory;
+
+    namespace My.MyChatFunction
+    {
+        public class MyChatFunction
+        {
+            private readonly ILogger _logger;
+            private readonly IKernel _kernel;
+            private readonly IChatCompletion _chat;
+            private readonly ChatHistory _chatHistory;
+
+            public MyChatFunction(ILoggerFactory loggerFactory, IKernel kernel, ChatHistory chatHistory, IChatCompletion chat)
+            {
+                _logger = loggerFactory.CreateLogger<MyChatFunction>();
+                _kernel = kernel;
+                _chat = chat;
+                _chatHistory = chatHistory;
+            }
+
+            [Function("MyChatFunction")]
+            public async Task<HttpResponseData> Run([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
+            {
+                _logger.LogInformation("C# HTTP trigger function processed a request.");
+
+                //_chatHistory!.AddMessage("user", await req.ReadAsStringAsync() ?? string.Empty);
+                string message = await SearchMemoriesAsync(_kernel, await req.ReadAsStringAsync() ?? string.Empty);
+                _chatHistory!.AddMessage("user", message);
+
+                string reply = await _chat.GenerateMessageAsync(_chatHistory, new ChatRequestSettings());
+
+                _chatHistory.AddMessage("assistant", reply);
+
+                HttpResponseData response = req.CreateResponse(HttpStatusCode.OK);
+                response.WriteString(reply);
+                return response;
+            }
+
+            private async Task<string> SearchMemoriesAsync(IKernel kernel, string query)
+            {
+                StringBuilder result = new StringBuilder();
+                result.Append("The below is relevant information.\n[START INFO]");
+
+                const string memoryCollectionName = "ms10k";
+
+                IAsyncEnumerable<MemoryQueryResult> queryResults =
+                    kernel.Memory.SearchAsync(memoryCollectionName, query, limit: 3, minRelevanceScore: 0.77);
+
+                // For each memory found, get previous and next memories.
+                await foreach (MemoryQueryResult r in queryResults)
+                {
+                    int id = int.Parse(r.Metadata.Id);
+                    MemoryQueryResult? rb2 = await kernel.Memory.GetAsync(memoryCollectionName, (id - 2).ToString());
+                    MemoryQueryResult? rb = await kernel.Memory.GetAsync(memoryCollectionName, (id - 1).ToString());
+                    MemoryQueryResult? ra = await kernel.Memory.GetAsync(memoryCollectionName, (id + 1).ToString());
+                    MemoryQueryResult? ra2 = await kernel.Memory.GetAsync(memoryCollectionName, (id + 2).ToString());
+
+                    if (rb2 != null) result.Append("\n " + rb2.Metadata.Id + ": " + rb2.Metadata.Description + "\n");
+                    if (rb != null) result.Append("\n " + rb.Metadata.Description + "\n");
+                    if (r != null) result.Append("\n " + r.Metadata.Description + "\n");
+                    if (ra != null) result.Append("\n " + ra.Metadata.Description + "\n");
+                    if (ra2 != null) result.Append("\n " + ra2.Metadata.Id + ": " + ra2.Metadata.Description + "\n");
+                }
+
+                result.Append("\n[END INFO]");
+                result.Append($"\n{query}");
+
+                return result.ToString();
+            }
+        }
+    }
+
+    ```
+    </details>
    
-## Deploy Qdrant VectorDB locally and Populate Data
+    Before running our new code, we'll need to launch and populate the vector database.
+    
+## Deploy Qdrant VectorDB and Populate Data
+In this section we deploy the Qdrant vector database locally and populate it with example data (i.e. Microsoft's 2022 10-K financial report).
+
 1. Open a terminal and use Docker to pull down the container image for Qdrant.
     ```bash
     docker pull qdrant/qdrant
     ```
+
 1. Change directory to this repo and create a `./data/qdrant` directory for Qdrant to use as persistent storage. 
    Then start the Qdrant container on port `6333` using the `./data/qdrant` folder as the persistent storage location.
     ```bash
     cd /src/semantic-kernel-rag-chat
     mkdir ./data/qdrant
-    docker run -p 6333:6333 -v $(pwd)/data/qdrant:/qdrant/storage qdrant/qdrant
+    docker run --name mychat -p 6333:6333 -v "$(pwd)/data/qdrant:/qdrant/storage" qdrant/qdrant
     ```
+    > To stop the container, in another terminal window run `docker container stop mychat; docker container rm mychat;`.
+
 1. Open a second terminal, change directory to this repo, and run the `importmemories` tool to populate the vector database with your data.
     > Make sure the `--collection` argument matches the `collectionName` variable in the `SearchMemoriesAsync` method above.
     
@@ -369,6 +540,39 @@ Before you get started, make sure you have the following additional requirements
     > This example leverages incremental indexes which are best constructed when all data is present. 
     
     > If you want to reset the memory store, delete and recreate the directory in step 2, or create a new directory to use.
+        
+## Run the function locally
+1. With Qdrant running and populated, run your Azure Function locally by opening a terminal, changing directory to your Azure Function project (e.g., `myrepo/src/myfunc`), and starting the function by running
+    ```bash
+    func start
+    ```
+    > Make note of the URL displayed (e.g., `http://localhost:7071/api/MyChatFunction`).
+
+1. Start the test console application
+   Open a second terminal and change directory to the `chatconsole` project folder (e.g., `myrepo/src/chatconsole`) and run the application using the Azure Function URL.
+   ```bash
+   dotnet run http://localhost:7071/api/MyChatFunction
+   ```
+1. Type a message and press enter to verify that we are able to chat with the AI!
+    ```
+    Input: Hello, how are you?
+    AI: Hello! As an AI language model, I don't have feelings, but I'm functioning properly and ready to 
+    assist you. How can I help you today?
+    ```
+   
+ 1. Now let's try ask the same question from before about Microsoft's 2022 revenue
+    ```
+    Input: What was Microsoft's cloud revenue for 2022?
+    AI: Microsoft's cloud revenue for 2022 was $91.2 billion.
+    ```
+    > The AI now has the ability to search through the Microsoft 10-K financial report and find the answer to our question.
+    > Let's try another...
+    ```
+    Input: Did linkedin's revenue grow in 2022?
+    AI: Yes, LinkedIn's revenue grew in 2022. It increased by $3.5 billion or 34% driven by a strong job 
+    market in the Talent Solutions business and advertising demand in the Marketing Solutions business.
+    ```
+    
 
 # Chapter 3: Azure Cognitive Search and Retrieval Augmented Generation
 >TODO

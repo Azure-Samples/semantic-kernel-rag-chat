@@ -29,9 +29,9 @@ namespace My.MyChatFunction
         {
             _logger.LogInformation("C# HTTP trigger function processed a request.");
 
-            //_chatHistory!.AddMessage("user", await req.ReadAsStringAsync() ?? string.Empty);
-            string message = await SearchMemoriesAsync(_kernel, await req.ReadAsStringAsync() ?? string.Empty);
-            _chatHistory!.AddMessage("user", message);
+            _chatHistory!.AddMessage("user", await req.ReadAsStringAsync() ?? string.Empty);
+            //string message = await SearchMemoriesAsync(_kernel, await req.ReadAsStringAsync() ?? string.Empty);
+            //_chatHistory!.AddMessage("user", message);
 
             string reply = await _chat.GenerateMessageAsync(_chatHistory, new ChatRequestSettings());
 
@@ -46,9 +46,10 @@ namespace My.MyChatFunction
         {
             StringBuilder result = new StringBuilder();
             result.Append("The below is relevant information.\n[START INFO]");
-            
-            const string memoryCollectionName = "Microsoft10K";
-            IAsyncEnumerable<MemoryQueryResult> queryResults = 
+
+            const string memoryCollectionName = "ms10k";
+
+            IAsyncEnumerable<MemoryQueryResult> queryResults =
                 kernel.Memory.SearchAsync(memoryCollectionName, query, limit: 3, minRelevanceScore: 0.77);
 
             // For each memory found, get previous and next memories.
@@ -60,16 +61,17 @@ namespace My.MyChatFunction
                 MemoryQueryResult? ra = await kernel.Memory.GetAsync(memoryCollectionName, (id + 1).ToString());
                 MemoryQueryResult? ra2 = await kernel.Memory.GetAsync(memoryCollectionName, (id + 2).ToString());
 
-                result.Append("\n " + rb2!.Metadata.Id + ": " + rb2.Metadata.Description + "\n");
-                result.Append("\n " + rb!.Metadata.Description + "\n");
-                result.Append("\n " + r!.Metadata.Description + "\n");
-                result.Append("\n " + ra!.Metadata.Description + "\n");
-                result.Append("\n " + ra2!.Metadata.Id + ": " + ra2.Metadata.Description + "\n");
+                if (rb2 != null) result.Append("\n " + rb2.Metadata.Id + ": " + rb2.Metadata.Description + "\n");
+                if (rb != null) result.Append("\n " + rb.Metadata.Description + "\n");
+                if (r != null) result.Append("\n " + r.Metadata.Description + "\n");
+                if (ra != null) result.Append("\n " + ra.Metadata.Description + "\n");
+                if (ra2 != null) result.Append("\n " + ra2.Metadata.Id + ": " + ra2.Metadata.Description + "\n");
             }
 
             result.Append("\n[END INFO]");
             result.Append($"\n{query}");
 
+            Console.WriteLine(result);
             return result.ToString();
         }
     }

@@ -20,13 +20,13 @@ hostBuilder.ConfigureServices(services =>
     {
         IConfiguration configuration = sp.GetRequiredService<IConfiguration>();
         string apiKey = configuration["OPENAI_APIKEY"];
-        
+
         QdrantMemoryStore memoryStore = new QdrantMemoryStore(
            host: "http://localhost",
            port: 6333,
            vectorSize: 1536,
            logger: sp.GetRequiredService<ILogger<QdrantMemoryStore>>());
-        
+
         IKernel kernel = new KernelBuilder()
             .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
             .Configure(config => config.AddOpenAIChatCompletionService(
@@ -49,8 +49,6 @@ hostBuilder.ConfigureServices(services =>
     const string instructions = "You are a helpful friendly assistant.";
     services.AddSingleton<ChatHistory>(sp =>
         sp.GetRequiredService<IChatCompletion>().CreateNewChat(instructions));
-
-    
 });
 
 hostBuilder.Build().Run();

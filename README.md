@@ -1,9 +1,14 @@
-> **WORK IN-PROGRESS**
 # Tutorial: ChatGPT + Enterprise data with Semantic Kernel, Azure OpenAI and Azure Cognitive Search
-
 This progressive tutorial is for building your own AI chat application informed with your enterprise data. In chapter one, we start with building a simple [ChatGPT](https://platform.openai.com/docs/models/gpt-3-5)-like application. Chapter two imports files (PDFs) for reference by the [Semantic Kernel](https://aka.ms/skrepo) orchestrator when chatting. Chapter three extends the context of the chat by implementing the [Retrieval Augmented Generation](https://arxiv.org/abs/2005.11401) pattern with [Azure Cognitive Search](https://learn.microsoft.com/en-us/azure/search/) for data indexing and retrieval.
 
 In all, this tutorial creates a minimal implementation for using [Semantic Kernel](https://aka.ms/skrepo) as a foundation for enabling enterprise data ingestion, long-term memory, plug-ins, and more.
+
+Special thanks to Adam Hurwitz's for his [SemanticQuestion10K](https://github.com/adhurwit/SemanticQuestion10K) sample, which was used in Chapter 2.
+
+- [x] Chapter 1: ChatGPT - **complete**
+- [x] Chapter 2: Memories of Enterprise Data - **complete**
+- [ ] Chapter 3: Azure Cognitive Search and Retrieval Augmented Generation - **in progress**
+
 
 # Chapter 1: ChatGPT
 In this section will create a minimal chat implementation for using Semantic Kernel as a foundation for 
@@ -260,7 +265,7 @@ Before you get started, make sure you have the following requirements in place:
     ```
     Next we'll add a knowledge base to the chat function to answer this question.
    
-# Chapter 2: Memories and Your Data
+# Chapter 2: Memories of Enterprise Data
 Semantic Kernel's memory stores are used to integrate data from your knowledge base into AI interactions.
 We use [embeddings](https://platform.openai.com/docs/guides/embeddings) to encode data and a vector database.
 Using a vector database also allows us to use vector search engines to quickly find the most relevant data for a given query.

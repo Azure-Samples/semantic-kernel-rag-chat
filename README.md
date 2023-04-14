@@ -1,5 +1,5 @@
 # Tutorial: ChatGPT + Enterprise data with Semantic Kernel, Azure OpenAI and Azure Cognitive Search
-This progressive tutorial is for building your own AI chat application informed with your enterprise data. In chapter one, we start with building a simple [ChatGPT](https://platform.openai.com/docs/models/gpt-3-5)-like application. Chapter two imports files (PDFs) for reference by the [Semantic Kernel](https://aka.ms/skrepo) orchestrator when chatting. Chapter three extends the context of the chat by implementing the [Retrieval Augmented Generation](https://arxiv.org/abs/2005.11401) pattern with [Azure Cognitive Search](https://learn.microsoft.com/en-us/azure/search/) for data indexing and retrieval.
+This progressive tutorial is for building your own AI chat application informed with your enterprise data. In chapter one, we start with building a simple [ChatGPT](https://platform.openai.com/docs/models/gpt-3-5)-like application. Chapter two imports files (PDFs) into a “Memories Store” for reference by the [Semantic Kernel](https://aka.ms/skrepo) (SK) orchestrator when chatting. Having the data from these PDFs allows SK to build better Prompts so the AI can offer better answers to questions – this is a key part of the Retrieval Augmented Generation pattern. Chapter three extends the context of the chat by using [Azure Cognitive Search](https://learn.microsoft.com/en-us/azure/search/) for data indexing and retrieval.
 
 In all, this tutorial creates a minimal implementation for using [Semantic Kernel](https://aka.ms/skrepo) as a foundation for enabling enterprise data ingestion, long-term memory, plug-ins, and more.
 
@@ -11,8 +11,7 @@ Special thanks to Adam Hurwitz's for his [SemanticQuestion10K](https://github.co
 
 
 # Chapter 1: ChatGPT
-In this section will create a minimal chat implementation for using Semantic Kernel as a foundation for 
-enterprise data ingestion, long-term memory, plug-ins, and more. 
+In this section will create a minimal chat implementation for a chat application that uses Semantic Kernel Semantic Kernel as a foundation for enterprise data ingestion, long-term memory, plug-ins, and more. We will write a C# Azure Function in detail from scratch that wraps all AI calls using SK and we will use a prebuilt C# console app as our UI for the chat app.
 
 ## Configure your environment
 Before you get started, make sure you have the following requirements in place:
@@ -44,8 +43,8 @@ Before you get started, make sure you have the following requirements in place:
    dotnet add package Microsoft.SemanticKernel --prerelease
    ```
 
-1. Back in your Azure Function project in Visual Studio Code, open the `Program.cs` file and replace with the content below. 
-    > This updates the `HostBuilder` to read configuration variables from the environment.
+1. Back in your Azure Function project in Visual Studio Code, open the `Program.cs` file and replace everything in the file with the content below. 
+    > This updates the `HostBuilder` to read configuration variables from the environment and sets up a reference to the SK runtime.
     ```csharp
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
@@ -104,7 +103,7 @@ Before you get started, make sure you have the following requirements in place:
     ```csharp
     using Microsoft.SemanticKernel.AI.ChatCompletion;
     ```
-    Replace the private members and constructor to include our chat history and chat completion services.
+    Replace the private members and constructor to include the chat history and chat completion services – these will be used to give the AI a history of the conversation (since the AI is stateless) and to make calls to the AI.
     ```csharp
     private readonly ILogger _logger;
     private readonly IChatCompletion _chat;
@@ -263,18 +262,24 @@ Before you get started, make sure you have the following requirements in place:
     financial results a few weeks after the end of the fiscal year. However, Microsoft's cloud revenue for 
     fiscal year 2021 was $59.5 billion, an increase of 34% from the previous year.
     ```
-    Next we'll add a knowledge base to the chat function to answer this question.
+    As you can see the AI is a bit out of date with its answers.
+    
+    In Chapter 1 we created an Azure function hosting semantic kernel that makes it easy to send API calls we want to make to the AI.  This gives us a shared, production ready endpoint that we could use from any given solution we want to build.
+
+    Next we'll add a 'knowledge base' to the chat to help answer this questions such as those above more accuratelyq.
    
 # Chapter 2: Memories of Enterprise Data
 Semantic Kernel's memory stores are used to integrate data from your knowledge base into AI interactions.
-We use [embeddings](https://platform.openai.com/docs/guides/embeddings) to encode data and a vector database.
-Using a vector database also allows us to use vector search engines to quickly find the most relevant data for a given query.
-In this chapter, we'll add a memory store to our chat function, import the Microsoft revenue data, and use it to answer 
-the question Chapter 1.
+Any data can be added to a knowledge base and you have full control of that data and who it is shared with.
+SK uses [embeddings](https://platform.openai.com/docs/guides/embeddings) to encode data and store it in a 
+vector database. Using a vector database also allows us to use vector search engines to quickly find the most 
+relevant data for a given query that we then share with the AI. In this chapter, we'll add a memory store to 
+our chat function, import the Microsoft revenue data, and use it to answer the question Chapter 1.
 
 ## Configure your environment
 Before you get started, make sure you have the following additional requirements in place:
 - [Docker Desktop](https://www.docker.com/products/docker-desktop) for hosting the [Qdrant](https://github.com/qdrant/qdrant) vector search engine.
+   > Note a different vector store, e.g., Azure Cognitive Search, Pinecone or Weviate could be leveraged.
 
 ## Add a memory store in our Azure Function
 1. Open a terminal window, change to the directory with your project file (e.g., `myrepo/src/myfunc`), 
@@ -288,7 +293,7 @@ Before you get started, make sure you have the following additional requirements
     using Microsoft.SemanticKernel.Connectors.Memory.Qdrant;
     ```
 
-    Rewrite where we instantiate the Semantic Kernel to include a Qdrant memory store and an OpenAI embedding generation service.
+    Replace the builder code we wrote in Chapter #1, where we instantiate the Semantic Kernel, to include a Qdrant memory store and an OpenAI embedding generation service.
     ```csharp
     QdrantMemoryStore memoryStore = new QdrantMemoryStore(
         host: "http://localhost",
@@ -513,7 +518,7 @@ Before you get started, make sure you have the following additional requirements
     Before running our new code, we'll need to launch and populate the vector database.
     
 ## Deploy Qdrant VectorDB and Populate Data
-In this section we deploy the Qdrant vector database locally and populate it with example data (i.e. Microsoft's 2022 10-K financial report).
+In this section we deploy the Qdrant vector database locally and populate it with example data (i.e., Microsoft's 2022 10-K financial report). This will take approximately 15 minutes to import and will use OpenAI’s embedding generation service to create embeddings for the 10-K.
 
 1. Open a terminal and use Docker to pull down the container image for Qdrant.
     ```bash
@@ -532,9 +537,8 @@ In this section we deploy the Qdrant vector database locally and populate it wit
 1. Open a second terminal, change directory to this repo, and run the `importmemories` tool to populate the vector database with your data.
     > Make sure the `--collection` argument matches the `collectionName` variable in the `SearchMemoriesAsync` method above.
     
-    > **Note:** This may take several minutes to several hours depending on the size of your data. This repo
-    > contains the Microsoft's 2022 10-K financial report data as an example which should normally take a only 
-    > about 15 minutes to import.
+    > **Note:** This may take several minutes to several hours depending on the size of your data. This repo contains 
+      Microsoft's 2022 10-K financial report data as an example which should normally take about 15 minutes to import.
         
 	```bash
     cd /src/semantic-kernel-rag-chat

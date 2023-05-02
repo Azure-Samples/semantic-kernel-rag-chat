@@ -123,9 +123,9 @@ Before you get started, make sure you have the following requirements in place:
     [Function("MyChatFunction")]
     public async Task<HttpResponseData> Run([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
     {
-        _chatHistory!.AddMessage("user", await req.ReadAsStringAsync() ?? string.Empty);
+        _chatHistory!.AddMessage(ChatHistory.AuthorRoles.User, await req.ReadAsStringAsync() ?? string.Empty);
         string reply = await _chat.GenerateMessageAsync(_chatHistory, new ChatRequestSettings());
-        _chatHistory.AddMessage("assistant", reply);
+        _chatHistory.AddMessage(ChatHistory.AuthorRoles.Assistant, reply);
         
         HttpResponseData response = req.CreateResponse(HttpStatusCode.OK);
         response.WriteString(reply);
@@ -217,13 +217,13 @@ Before you get started, make sure you have the following requirements in place:
             public async Task<HttpResponseData> Run([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
             {
                 // Add the user's chat message to the history.
-                _chatHistory!.AddMessage("user", await req.ReadAsStringAsync() ?? string.Empty);
+                _chatHistory!.AddMessage(ChatHistory.AuthorRoles.User, await req.ReadAsStringAsync() ?? string.Empty);
 
                 // Send the chat history to the AI and receive a reply.
                 string reply = await _chat.GenerateMessageAsync(_chatHistory, new ChatRequestSettings());
 
                 // Add the AI's reply to the chat history for next time.
-                _chatHistory.AddMessage("assistant", reply);
+                _chatHistory.AddMessage(ChatHistory.AuthorRoles.Assistant, reply);
 
                 // Send the AI's response back to the caller.
                 HttpResponseData response = req.CreateResponse(HttpStatusCode.OK);
@@ -266,7 +266,7 @@ Before you get started, make sure you have the following requirements in place:
     
     In Chapter 1 we created an Azure function hosting semantic kernel that makes it easy to send API calls we want to make to the AI.  This gives us a shared, production ready endpoint that we could use from any given solution we want to build.
 
-    Next we'll add a 'knowledge base' to the chat to help answer this questions such as those above more accuratelyq.
+    Next we'll add a 'knowledge base' to the chat to help answer this questions such as those above more accurately.
    
 # Chapter 2: Memories of Enterprise Data
 Semantic Kernel's memory stores are used to integrate data from your knowledge base into AI interactions.
@@ -316,19 +316,19 @@ Before you get started, make sure you have the following additional requirements
     ```
 
 1. Open `MyChatFunction.cs` and replace where we add the user's message to the chat history
-   (`_chatHistory!.AddMessage("user",...`) with a call that will search for related memories and include them
+   (`_chatHistory!.AddMessage(ChatHistory.AuthorRoles.User,...`) with a call that will search for related memories and include them
    in the user's message to the AI.
 	```csharp
-    // _chatHistory!.AddMessage("user", await req.ReadAsStringAsync() ?? string.Empty);
+    // _chatHistory!.AddMessage(ChatHistory.AuthorRoles.User, await req.ReadAsStringAsync() ?? string.Empty);
     string message = await SearchMemoriesAsync(_kernel, await req.ReadAsStringAsync() ?? string.Empty);
-    _chatHistory!.AddMessage("user", message);
+    _chatHistory!.AddMessage(ChatHistory.AuthorRoles.User, message);
 	```
 
 1. And finally we'll add the `SearchMemoriesAsync` method to this class.
     > The strategy of this memory search is to find memories that are similar to the user's input and then
     > include those memories in the user's message to the AI. This is done by first searching for memories
     > that are similar to the user's input and including the previous and subsequent memories. 
-    > This is done to ensure that the AI has context for the user's input.
+    > These memories provide the AI with context for the user's input.
     ```csharp
     private async Task<string> SearchMemoriesAsync(IKernel kernel, string query)
     {
@@ -407,7 +407,7 @@ Before you get started, make sure you have the following additional requirements
                     modelId: "gpt-3.5-turbo",
                     apiKey: apiKey))
                 .Configure(c => c.AddOpenAIEmbeddingGenerationService(
-                    serviceId: "text-embedding-ada-002",
+                    serviceId: "embedding",
                     modelId: "text-embedding-ada-002",
                     apiKey: apiKey))
                 .WithMemoryStorage(memoryStore)
@@ -465,13 +465,13 @@ Before you get started, make sure you have the following additional requirements
             {
                 _logger.LogInformation("C# HTTP trigger function processed a request.");
 
-                //_chatHistory!.AddMessage("user", await req.ReadAsStringAsync() ?? string.Empty);
+                //_chatHistory!.AddMessage(ChatHistory.AuthorRoles.User, await req.ReadAsStringAsync() ?? string.Empty);
                 string message = await SearchMemoriesAsync(_kernel, await req.ReadAsStringAsync() ?? string.Empty);
-                _chatHistory!.AddMessage("user", message);
+                _chatHistory!.AddMessage(ChatHistory.AuthorRoles.User, message);
 
                 string reply = await _chat.GenerateMessageAsync(_chatHistory, new ChatRequestSettings());
 
-                _chatHistory.AddMessage("assistant", reply);
+                _chatHistory.AddMessage(ChatHistory.AuthorRoles.Assistant, reply);
 
                 HttpResponseData response = req.CreateResponse(HttpStatusCode.OK);
                 response.WriteString(reply);

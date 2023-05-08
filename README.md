@@ -5,9 +5,9 @@ In all, this tutorial creates a minimal implementation for using [Semantic Kerne
 
 Special thanks to Adam Hurwitz's for his [SemanticQuestion10K](https://github.com/adhurwit/SemanticQuestion10K) sample, which was used in Chapter 2.
 
-- [x] Chapter 1: ChatGPT - **complete**
-- [x] Chapter 2: Memories of Enterprise Data - **complete**
-- [ ] Chapter 3: Azure Cognitive Search and Retrieval Augmented Generation - **in progress**
+- [x] [Chapter 1: ChatGPT](#chapter-1-chatgpt) - **complete**
+- [x] [Chapter 2: Memories of Enterprise Data](#chapter-2-memories-of-enterprise-data) - **complete**
+- [ ] [Chapter 3: Azure Cognitive Search and Retrieval Augmented Generation](#chapter-3-azure-cognitive-search-and-retrieval-augmented-generation) - **in progress**
 
 
 # Chapter 1: ChatGPT
@@ -584,7 +584,247 @@ In this section we deploy the Qdrant vector database locally and populate it wit
     
 
 # Chapter 3: Azure Cognitive Search and Retrieval Augmented Generation
->TODO
+>TODO: overview
+
+## Configure your environment
+> TODO: keys, permissions for ACS service
+
+> TODO: set ACS endpoint and key as environment variables
+
+## Update the memory store in our Azure Function
+1. Open a terminal window, change to the directory with your project file (e.g., `myrepo/src/myfunc`), 
+   and run the `dotnet` commands below to add Semantic Kernel Azure Cognitive Search Connector to your project.
+    ```bash
+    dotnet add package Microsoft.SemanticKernel.Connectors.Memory.AzureCognitiveSearch --prerelease
+    ```
+
+1. Open your Program code file (e.g., `Program.cs`) and add the Azure Cognitive Search connector using statement to the top.
+    ```csharp
+    using Microsoft.SemanticKernel.Connectors.Memory.AzureCognitiveSearch;
+    ```
+
+    Replace the builder code we wrote in Chapter #2, where we instantiate the Semantic Kernel ~~, to include a Qdrant memory store and an OpenAI embedding generation service.~~
+   
+    ```csharp
+    AzureCognitiveSearchMemory memory = new AzureCognitiveSearchMemory(
+        configuration["ACS_ENDPOINT"],
+        configuration["ACS_KEY"]
+    );
+    
+    IKernel kernel = new KernelBuilder()
+        .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
+        .Configure(config => config.AddOpenAIChatCompletionService(
+            serviceId: "chat",
+            modelId: "gpt-3.5-turbo",
+            apiKey: apiKey))
+        .WithMemory(memory)
+        .Build();
+    ```
+
+>  TODO: explain that we are using the same `SearchMemoriesAsync` function and why this doesn't need to be changed
+
+1. The complete code files (with additional comments).
+    <details>
+    <summary>Program.cs</summary>
+    
+    ```csharp
+    using Microsoft.Extensions.Configuration;
+    using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Hosting;
+    using Microsoft.Extensions.Logging;
+    using Microsoft.SemanticKernel;
+    using Microsoft.SemanticKernel.AI.ChatCompletion;
+    using Microsoft.SemanticKernel.Connectors.Memory.AzureCognitiveSearch;
+
+    var hostBuilder = new HostBuilder()
+        .ConfigureFunctionsWorkerDefaults();
+
+    hostBuilder.ConfigureAppConfiguration((context, config) =>
+    {
+        config.AddEnvironmentVariables();
+    });
+
+    hostBuilder.ConfigureServices(services =>
+    {
+        services.AddSingleton<IKernel>(sp =>
+        {
+            // Retrieve the OpenAI API key from the configuration/environment.
+            IConfiguration configuration = sp.GetRequiredService<IConfiguration>();
+            string apiKey = configuration["OPENAI_APIKEY"];
+
+            // Create a memory connector to Azure Cognitive Search that will be used to store memories.
+            AzureCognitiveSearchMemory memory = new AzureCognitiveSearchMemory(
+               configuration["ACS_ENDPOINT"],
+               configuration["ACS_APIKEY"]
+            );
+
+            // Create the kernel with chat completion and memory.
+            IKernel kernel = new KernelBuilder()
+                .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
+                .Configure(config => config.AddOpenAIChatCompletionService(
+                    serviceId: "chat",
+                    modelId: "gpt-3.5-turbo",
+                    apiKey: apiKey))
+                .WithMemory(memory)
+                .Build();
+
+            return kernel;
+        });
+
+        // Register the chat completion service.
+        services.AddSingleton<IChatCompletion>(sp =>
+        sp.GetRequiredService<IKernel>().GetService<IChatCompletion>());
+
+        // Create a new chat history.
+        const string instructions = "You are a helpful friendly assistant.";
+        services.AddSingleton<ChatHistory>(sp =>
+            sp.GetRequiredService<IChatCompletion>().CreateNewChat(instructions));
+    });
+
+    hostBuilder.Build().Run();
+    ```
+    </details>
+
+    <details>
+    <summary>MyChatFunction.cs</summary>
+
+    ```csharp
+    using System.Net;
+    using System.Text;
+    using Microsoft.Azure.Functions.Worker;
+    using Microsoft.Azure.Functions.Worker.Http;
+    using Microsoft.Extensions.Logging;
+    using Microsoft.SemanticKernel;
+    using Microsoft.SemanticKernel.AI.ChatCompletion;
+    using Microsoft.SemanticKernel.Memory;
+
+    namespace My.MyChatFunction
+    {
+        public class MyChatFunction
+        {
+            private readonly ILogger _logger;
+            private readonly IKernel _kernel;
+            private readonly IChatCompletion _chat;
+            private readonly ChatHistory _chatHistory;
+
+            public MyChatFunction(ILoggerFactory loggerFactory, IKernel kernel, ChatHistory chatHistory, IChatCompletion chat)
+            {
+                _logger = loggerFactory.CreateLogger<MyChatFunction>();
+                _kernel = kernel;
+                _chat = chat;
+                _chatHistory = chatHistory;
+            }
+
+            [Function("MyChatFunction")]
+            public async Task<HttpResponseData> Run([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
+            {
+                _logger.LogInformation("C# HTTP trigger function processed a request.");
+
+                //_chatHistory!.AddMessage(ChatHistory.AuthorRoles.User, await req.ReadAsStringAsync() ?? string.Empty);
+                string message = await SearchMemoriesAsync(_kernel, await req.ReadAsStringAsync() ?? string.Empty);
+                _chatHistory!.AddMessage(ChatHistory.AuthorRoles.User, message);
+
+                string reply = await _chat.GenerateMessageAsync(_chatHistory, new ChatRequestSettings());
+
+                _chatHistory.AddMessage(ChatHistory.AuthorRoles.Assistant, reply);
+
+                HttpResponseData response = req.CreateResponse(HttpStatusCode.OK);
+                response.WriteString(reply);
+                return response;
+            }
+
+            private async Task<string> SearchMemoriesAsync(IKernel kernel, string query)
+            {
+                StringBuilder result = new StringBuilder();
+                result.Append("The below is relevant information.\n[START INFO]");
+
+                const string memoryCollectionName = "ms10k";
+
+                IAsyncEnumerable<MemoryQueryResult> queryResults =
+                    kernel.Memory.SearchAsync(memoryCollectionName, query, limit: 3, minRelevanceScore: 0.77);
+
+                // For each memory found, get previous and next memories.
+                await foreach (MemoryQueryResult r in queryResults)
+                {
+                    int id = int.Parse(r.Metadata.Id);
+                    MemoryQueryResult? rb2 = await kernel.Memory.GetAsync(memoryCollectionName, (id - 2).ToString());
+                    MemoryQueryResult? rb = await kernel.Memory.GetAsync(memoryCollectionName, (id - 1).ToString());
+                    MemoryQueryResult? ra = await kernel.Memory.GetAsync(memoryCollectionName, (id + 1).ToString());
+                    MemoryQueryResult? ra2 = await kernel.Memory.GetAsync(memoryCollectionName, (id + 2).ToString());
+
+                    if (rb2 != null) result.Append("\n " + rb2.Metadata.Id + ": " + rb2.Metadata.Description + "\n");
+                    if (rb != null) result.Append("\n " + rb.Metadata.Description + "\n");
+                    if (r != null) result.Append("\n " + r.Metadata.Description + "\n");
+                    if (ra != null) result.Append("\n " + ra.Metadata.Description + "\n");
+                    if (ra2 != null) result.Append("\n " + ra2.Metadata.Id + ": " + ra2.Metadata.Description + "\n");
+                }
+
+                result.Append("\n[END INFO]");
+                result.Append($"\n{query}");
+
+                return result.ToString();
+            }
+        }
+    }
+
+    ```
+    </details>
+   
+> TODO: If `MyChatFunction.cs` hasn't changed at all, do we still include it here?
+
+Before running our updated code, we'll need to populate an Azure Cognitive Search index. ~~launch and populate the vector database~~.
+
+## Populate the data
+In this section we create and populate an Azure Cognitive Search index with example data (i.e., Microsoft's 2022 10-K financial report). ~~This will take approximately 15 minutes to import and will use OpenAI’s embedding generation service to create embeddings for the 10-K.~~
+
+1. Open a terminal, change directory to this repo, and run the `importmemories` tool to populate the vector database with your data.
+    > Make sure the `--collection` argument matches the `collectionName` variable in the `SearchMemoriesAsync` method above.
+    
+    > **Note:** This may take several minutes to several hours depending on the size of your data. This repo contains 
+      Microsoft's 2022 10-K financial report data as an example which should normally take about 15 minutes to import.
+        
+	```bash
+    cd /src/semantic-kernel-rag-chat
+    cd src/importmemories
+    dotnet run -- --qdrant-url http://localhost:6333 --collection ms10k --text-file ../../data/ms10k.txt
+	```
+    > When importing your own data, try to import all files at the same time using multiple `--text-file` arguments. 
+    > This example leverages incremental indexes which are best constructed when all data is present. 
+    
+    > If you want to reset the memory store, TODO ~~delete and recreate the directory in step 2, or create a new directory to use.~~
+
+## Run the function locally
+1. With the Azure Cognitive Search service running and populated, run your Azure Function locally by opening a terminal, changing directory to your Azure Function project (e.g., `myrepo/src/myfunc`), and starting the function by running
+    ```bash
+    func start
+    ```
+    > Make note of the URL displayed (e.g., `http://localhost:7071/api/MyChatFunction`).
+
+1. Start the test console application
+   Open a second terminal and change directory to the `chatconsole` project folder (e.g., `myrepo/src/chatconsole`) and run the application using the Azure Function URL.
+   ```bash
+   dotnet run http://localhost:7071/api/MyChatFunction
+   ```
+1. Type a message and press enter to verify that we are able to chat with the AI!
+    ```
+    Input: Hello, how are you?
+    AI: Hello! As an AI language model, I don't have feelings, but I'm functioning properly and ready to 
+    assist you. How can I help you today?
+    ```
+   
+ 1. Now let's try ask the same question from before about Microsoft's 2022 revenue
+    ```
+    Input: What was Microsoft's cloud revenue for 2022?
+    AI: Microsoft's cloud revenue for 2022 was $91.2 billion.
+    ```
+    > The AI now has the ability to search through the Microsoft 10-K financial report and find the answer to our question.
+    > Let's try another...
+    ```
+    Input: Did linkedin's revenue grow in 2022?
+    AI: Yes, LinkedIn's revenue grew in 2022. It increased by $3.5 billion or 34% driven by a strong job 
+    market in the Talent Solutions business and advertising demand in the Marketing Solutions business.
+    ```
+    
 
 # Appendix
 ## Deploy Azure Function to Azure

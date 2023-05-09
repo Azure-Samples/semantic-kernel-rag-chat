@@ -593,7 +593,7 @@ In this section we deploy the Qdrant vector database locally and populate it wit
 
 ## Update the memory store in our Azure Function
 1. Open a terminal window, change to the directory with your project file (e.g., `myrepo/src/myfunc`), 
-   and run the `dotnet` commands below to add Semantic Kernel Azure Cognitive Search Connector to your project.
+   and run the `dotnet` commands below to add the Semantic Kernel Azure Cognitive Search connector to your project.
     ```bash
     dotnet add package Microsoft.SemanticKernel.Connectors.Memory.AzureCognitiveSearch --prerelease
     ```
@@ -603,25 +603,33 @@ In this section we deploy the Qdrant vector database locally and populate it wit
     using Microsoft.SemanticKernel.Connectors.Memory.AzureCognitiveSearch;
     ```
 
-    Replace the builder code we wrote in Chapter #2, where we instantiate the Semantic Kernel ~~, to include a Qdrant memory store and an OpenAI embedding generation service.~~
-   
+    Replace the Qdrant memory store that we added in Chapter #2 with the Azure Cognitive Search memory connector.
+
     ```csharp
-    AzureCognitiveSearchMemory memory = new AzureCognitiveSearchMemory(
+    AzureCognitiveSearchMemory acsMemory = new AzureCognitiveSearchMemory(
         configuration["ACS_ENDPOINT"],
         configuration["ACS_KEY"]
     );
+    ```
     
+    Then, update the builder code where we instantiate the Semantic Kernel. We can remove the OpenAI embedding generation service and the Qdrant memory store from the builder, and replace them with the Azure Cognitive Search memory that we just created.
+
+    > TODO: explain why ACS doesn't need embedding service
+
+    ```
     IKernel kernel = new KernelBuilder()
         .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
         .Configure(config => config.AddOpenAIChatCompletionService(
             serviceId: "chat",
             modelId: "gpt-3.5-turbo",
             apiKey: apiKey))
-        .WithMemory(memory)
+        .WithMemory(acsMemory)
         .Build();
     ```
 
->  TODO: explain that we are using the same `SearchMemoriesAsync` function and why this doesn't need to be changed
+> TODO: What is difference between .WithMemory and .WithMemoryStorage? Also explain ISemanticTextMemory interface -- what is semantic text memory? How is this different than Qdrant, which implements IMemoryStore?
+
+>  TODO: explain that we are using the same `SearchMemoriesAsync` function and why this doesn't need to be changed. Point back to where we added that in README.
 
 1. The complete code files (with additional comments).
     <details>
@@ -653,7 +661,7 @@ In this section we deploy the Qdrant vector database locally and populate it wit
             string apiKey = configuration["OPENAI_APIKEY"];
 
             // Create a memory connector to Azure Cognitive Search that will be used to store memories.
-            AzureCognitiveSearchMemory memory = new AzureCognitiveSearchMemory(
+            AzureCognitiveSearchMemory acsMemory = new AzureCognitiveSearchMemory(
                configuration["ACS_ENDPOINT"],
                configuration["ACS_APIKEY"]
             );
@@ -665,7 +673,7 @@ In this section we deploy the Qdrant vector database locally and populate it wit
                     serviceId: "chat",
                     modelId: "gpt-3.5-turbo",
                     apiKey: apiKey))
-                .WithMemory(memory)
+                .WithMemory(acsMemory)
                 .Build();
 
             return kernel;
@@ -686,7 +694,7 @@ In this section we deploy the Qdrant vector database locally and populate it wit
     </details>
 
     <details>
-    <summary>MyChatFunction.cs</summary>
+    <summary>MyChatFunction.cs (unchanged)</summary>
 
     ```csharp
     using System.Net;
@@ -770,11 +778,9 @@ In this section we deploy the Qdrant vector database locally and populate it wit
     ```
     </details>
    
-> TODO: If `MyChatFunction.cs` hasn't changed at all, do we still include it here?
+Before running our updated code, we'll need to populate an Azure Cognitive Search index.
 
-Before running our updated code, we'll need to populate an Azure Cognitive Search index. ~~launch and populate the vector database~~.
-
-## Populate the data
+## Populate the search index - TODO
 In this section we create and populate an Azure Cognitive Search index with example data (i.e., Microsoft's 2022 10-K financial report). ~~This will take approximately 15 minutes to import and will use OpenAI’s embedding generation service to create embeddings for the 10-K.~~
 
 1. Open a terminal, change directory to this repo, and run the `importmemories` tool to populate the vector database with your data.

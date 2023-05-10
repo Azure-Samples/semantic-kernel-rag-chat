@@ -7,10 +7,11 @@ internal class Program
     /// <summary>
     /// This program imports text files into a Qdrant VectorDB using Semantic Kernel.
     /// </summary>
-    /// <param name="qdrantUrl">The URL to a running Qdrant VectorDB (e.g., http://localhost:6333)</param>
+    /// <param name="memoryStoreType">Either "qdrant" or "azurecognitivesearch"</param>
+    /// <param name="memoryStoreUrl">The URL to a running Qdrant VectorDB (e.g., http://localhost:6333) or to your Azure Cognitive Search endpoint.</param>
     /// <param name="collection">Name of the database collection in which to import (e.g., "mycollection").</param>
     /// <param name="textFile">Text files to import.</param>
-    static async Task Main(string qdrantUrl, string collection, params FileInfo[] textFile)
+    static async Task Main(string memoryStoreType, string memoryStoreUrl, string collection, params FileInfo[] textFile)
     {
         // Validate arguments.
         if (textFile.Length == 0)
@@ -19,29 +20,66 @@ internal class Program
             return;
         }
 
-        // Get the OpenAI API key from the environment.
-        string? apiKey = Environment.GetEnvironmentVariable("OPENAI_APIKEY");
-        if (string.IsNullOrWhiteSpace(apiKey))
+        IKernel kernel;
+
+        if (memoryStoreType.Equals("qdrant", StringComparison.InvariantCultureIgnoreCase))
         {
-            Console.Error.WriteLine("Please set the 'OPENAI_APIKEY' environment variable with your OpenAI API key.");
+            // Get the OpenAI API key from the environment.
+            string? openAiApiKey = Environment.GetEnvironmentVariable("OPENAI_APIKEY");
+            if (string.IsNullOrWhiteSpace(openAiApiKey))
+            {
+                Console.Error.WriteLine("Please set the 'OPENAI_APIKEY' environment variable with your OpenAI API key.");
+                return;
+            }
+
+            // Create a new memory store that will store the embeddings in Qdrant.
+            Uri qdrantUri = new Uri(memoryStoreUrl);
+            QdrantMemoryStore memoryStore = new QdrantMemoryStore(
+                host: $"{qdrantUri.Scheme}://{qdrantUri.Host}",
+                port: qdrantUri.Port,
+                vectorSize: 1536);
+
+            // Create a new kernel with an OpenAI Embedding Generation service.
+            kernel = new KernelBuilder()
+                .Configure(c => c.AddOpenAIEmbeddingGenerationService(
+                    serviceId: "embedding",
+                    modelId: "text-embedding-ada-002",
+                    apiKey: openAiApiKey))
+                .WithMemoryStorage(memoryStore)
+                .Build();
+
+        }
+        else if (memoryStoreType.Equals("azurecognitivesearch", StringComparison.InvariantCultureIgnoreCase))
+        {
+            // Get the Azure Cognitive Search API key from the environment.
+            string? azureCognitiveSearchApiKey = Environment.GetEnvironmentVariable("AZURE_COGNITIVE_SEARCH_APIKEY");
+            if (string.IsNullOrWhiteSpace(azureCognitiveSearchApiKey))
+            {
+                Console.Error.WriteLine("Please set the 'AZURE_COGNITIVE_SEARCH_APIKEY' environment variable with your Azure Cognitive Search API key.");
+                return;
+            }
+
+            AzureCognitiveSearchMemory memory = new AzureCognitiveSearchMemory(
+                memoryStoreUrl,
+                azureCognitiveSearchApiKey
+            );
+
+            // Create a new kernel with an OpenAI Embedding Generation service.
+            kernel = new KernelBuilder()
+                .WithMemory(memory)
+                .Build();
+        }
+        else
+        {
+            Console.Error.WriteLine("Not a supported memory store type. Use '--help' for usage.");
             return;
         }
 
-        // Create a new memory store that will store the embeddings in Qdrant.
-        Uri qdrantUri = new Uri(qdrantUrl);
-        QdrantMemoryStore memoryStore = new QdrantMemoryStore(
-            host: $"{qdrantUri.Scheme}://{qdrantUri.Host}",
-            port: qdrantUri.Port,
-            vectorSize: 1536);
+        await ImportMemoriesAsync(kernel, collection, textFile);
+    }
 
-        // Create a new kernel with an OpenAI Embedding Generation service.
-        IKernel kernel = new KernelBuilder()
-            .Configure(c => c.AddOpenAIEmbeddingGenerationService(
-                serviceId: "embedding",
-                modelId: "text-embedding-ada-002",
-                apiKey: apiKey))
-            .WithMemoryStorage(memoryStore)
-            .Build();
+    static async Task ImportMemoriesAsync(IKernel kernel, string collection, params FileInfo[] textFile)
+    {
 
         // Use sequential memory IDs; this makes it easier to retrieve sentences near a given sentence.
         int memoryId = 0;

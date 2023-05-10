@@ -307,7 +307,7 @@ Before you get started, make sure you have the following additional requirements
             serviceId: "chat",
             modelId: "gpt-3.5-turbo",
             apiKey: apiKey))
-        .Configure(c => c.AddOpenAIEmbeddingGenerationService(
+        .Configure(c => c.AddOpenAITextEmbeddingGenerationService(
             serviceId: "embedding",
             modelId: "text-embedding-ada-002",
             apiKey))
@@ -406,7 +406,7 @@ Before you get started, make sure you have the following additional requirements
                     serviceId: "chat",
                     modelId: "gpt-3.5-turbo",
                     apiKey: apiKey))
-                .Configure(c => c.AddOpenAIEmbeddingGenerationService(
+                .Configure(c => c.AddOpenAITextEmbeddingGenerationService(
                     serviceId: "embedding",
                     modelId: "text-embedding-ada-002",
                     apiKey: apiKey))
@@ -543,7 +543,7 @@ In this section we deploy the Qdrant vector database locally and populate it wit
 	```bash
     cd /src/semantic-kernel-rag-chat
     cd src/importmemories
-    dotnet run -- --qdrant-url http://localhost:6333 --collection ms10k --text-file ../../data/ms10k.txt
+    dotnet run -- --memory-store-type qdrant --memory-store-url http://localhost:6333 --collection ms10k --text-file ../../data/ms10k.txt
 	```
     > When importing your own data, try to import all files at the same time using multiple `--text-file` arguments. 
     > This example leverages incremental indexes which are best constructed when all data is present. 
@@ -606,9 +606,9 @@ In this section we deploy the Qdrant vector database locally and populate it wit
     Replace the Qdrant memory store that we added in Chapter #2 with the Azure Cognitive Search memory connector.
 
     ```csharp
-    AzureCognitiveSearchMemory acsMemory = new AzureCognitiveSearchMemory(
-        configuration["ACS_ENDPOINT"],
-        configuration["ACS_KEY"]
+    AzureCognitiveSearchMemory memory = new AzureCognitiveSearchMemory(
+        configuration["AZURE_COGNITIVE_SEARCH_ENDPOINT"],
+        configuration["AZURE_COGNITIVE_SEARCH_APIKEY"]
     );
     ```
     
@@ -623,7 +623,7 @@ In this section we deploy the Qdrant vector database locally and populate it wit
             serviceId: "chat",
             modelId: "gpt-3.5-turbo",
             apiKey: apiKey))
-        .WithMemory(acsMemory)
+        .WithMemory(memory)
         .Build();
     ```
 
@@ -661,9 +661,9 @@ In this section we deploy the Qdrant vector database locally and populate it wit
             string apiKey = configuration["OPENAI_APIKEY"];
 
             // Create a memory connector to Azure Cognitive Search that will be used to store memories.
-            AzureCognitiveSearchMemory acsMemory = new AzureCognitiveSearchMemory(
-               configuration["ACS_ENDPOINT"],
-               configuration["ACS_APIKEY"]
+            AzureCognitiveSearchMemory memory = new AzureCognitiveSearchMemory(
+               configuration["AZURE_COGNITIVE_SEARCH_ENDPOINT"],
+               configuration["AZURE_COGNITIVE_SEARCH_APIKEY"]
             );
 
             // Create the kernel with chat completion and memory.
@@ -673,7 +673,7 @@ In this section we deploy the Qdrant vector database locally and populate it wit
                     serviceId: "chat",
                     modelId: "gpt-3.5-turbo",
                     apiKey: apiKey))
-                .WithMemory(acsMemory)
+                .WithMemory(memory)
                 .Build();
 
             return kernel;
@@ -792,7 +792,7 @@ In this section we create and populate an Azure Cognitive Search index with exam
 	```bash
     cd /src/semantic-kernel-rag-chat
     cd src/importmemories
-    dotnet run -- --qdrant-url http://localhost:6333 --collection ms10k --text-file ../../data/ms10k.txt
+    dotnet run -- --memory-store-type azurecognitivesearch --memory-store-url $AZURE_COGNITIVE_SEARCH_ENDPOINT --collection ms10k --text-file ../../data/ms10k.txt
 	```
     > When importing your own data, try to import all files at the same time using multiple `--text-file` arguments. 
     > This example leverages incremental indexes which are best constructed when all data is present. 

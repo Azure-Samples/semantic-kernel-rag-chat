@@ -21,9 +21,9 @@ hostBuilder.ConfigureServices(services =>
         IConfiguration configuration = sp.GetRequiredService<IConfiguration>();
         string apiKey = configuration["OPENAI_APIKEY"];
 
-        AzureCognitiveMemory memory = new AzureCognitiveMemory(
-            configuration["ACS_ENDPOINT"],
-            configuration["ACS_APIKEY"]
+        AzureCognitiveSearchMemory memory = new AzureCognitiveSearchMemory(
+            configuration["AZURE_COGNITIVE_SEARCH_ENDPOINT"],
+            configuration["AZURE_COGNITIVE_SEARCH_APIKEY"]
         );
 
         IKernel kernel = new KernelBuilder()

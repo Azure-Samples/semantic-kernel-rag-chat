@@ -33,7 +33,7 @@ hostBuilder.ConfigureServices(services =>
                 serviceId: "chat",
                 modelId: "gpt-3.5-turbo",
                 apiKey: apiKey))
-            .Configure(c => c.AddOpenAIEmbeddingGenerationService(
+            .Configure(c => c.AddOpenAITextEmbeddingGenerationService(
                 serviceId: "text-embedding-ada-002",
                 modelId: "text-embedding-ada-002",
                 apiKey: apiKey))

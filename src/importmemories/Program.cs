@@ -1,6 +1,7 @@
 ﻿using BlingFire;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.Memory.Qdrant;
+using Microsoft.SemanticKernel.Connectors.Memory.AzureCognitiveSearch;
 
 internal class Program
 {
@@ -41,7 +42,7 @@ internal class Program
 
             // Create a new kernel with an OpenAI Embedding Generation service.
             kernel = new KernelBuilder()
-                .Configure(c => c.AddOpenAIEmbeddingGenerationService(
+                .Configure(c => c.AddOpenAITextEmbeddingGenerationService(
                     serviceId: "embedding",
                     modelId: "text-embedding-ada-002",
                     apiKey: openAiApiKey))

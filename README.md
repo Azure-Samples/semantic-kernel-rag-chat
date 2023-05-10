@@ -22,6 +22,8 @@ Before you get started, make sure you have the following requirements in place:
 - [Azure Function Core Tools 4.x](https://aka.ms/azfn/coretools) for managing Azure Functions
 - [OpenAI API key](https://platform.openai.com/account/api-keys) for using the OpenAI API (or click [here](https://platform.openai.com/signup) to signup).
 
+> TODO: Add instructions for setting the `OPENAI_APIKEY` environment variable.
+
 ## Create an Azure Function project.
 1. In Visual Studio Code, click on the Azure extension (or press `SHIFT+ALT+A`).
 1. Mouse-over `WORKSPACE` and select `Create Function` (i.e., +⚡) to create a new local Azure function project.
@@ -67,7 +69,6 @@ Before you get started, make sure you have the following requirements in place:
 1. Add the Semantic Kernel by adding a `ConfigureServices` call below the existing `ConfigureAppConfiguration` and populating it with an instance of the kernel.
     > The kernel below is configured to use an OpenAI ChatGPT model (e.g., gpt-3.5-turbo) for chat completions.
 
-    > TODO: Add instructions for setting the `OPENAI_APIKEY` environment variable.
     ```csharp
     hostBuilder.ConfigureServices(services =>
     {
@@ -266,7 +267,7 @@ Before you get started, make sure you have the following requirements in place:
     
     In Chapter 1 we created an Azure function hosting semantic kernel that makes it easy to send API calls we want to make to the AI.  This gives us a shared, production ready endpoint that we could use from any given solution we want to build.
 
-    Next we'll add a 'knowledge base' to the chat to help answer this questions such as those above more accurately.
+    Next we'll add a 'knowledge base' to the chat to help answer questions such as those above more accurately.
    
 # Chapter 2: Memories of Enterprise Data
 Semantic Kernel's memory stores are used to integrate data from your knowledge base into AI interactions.
@@ -274,12 +275,12 @@ Any data can be added to a knowledge base and you have full control of that data
 SK uses [embeddings](https://platform.openai.com/docs/guides/embeddings) to encode data and store it in a 
 vector database. Using a vector database also allows us to use vector search engines to quickly find the most 
 relevant data for a given query that we then share with the AI. In this chapter, we'll add a memory store to 
-our chat function, import the Microsoft revenue data, and use it to answer the question Chapter 1.
+our chat function, import the Microsoft revenue data, and use it to answer the question from Chapter 1.
 
 ## Configure your environment
 Before you get started, make sure you have the following additional requirements in place:
 - [Docker Desktop](https://www.docker.com/products/docker-desktop) for hosting the [Qdrant](https://github.com/qdrant/qdrant) vector search engine.
-   > Note a different vector store, e.g., Azure Cognitive Search, Pinecone or Weviate could be leveraged.
+   > Note that a different vector store, such as Pinecone or Weviate, could be leveraged.
 
 ## Add a memory store in our Azure Function
 1. Open a terminal window, change to the directory with your project file (e.g., `myrepo/src/myfunc`), 
@@ -555,7 +556,7 @@ In this section we deploy the Qdrant vector database locally and populate it wit
     ```bash
     func start
     ```
-    > Make note of the URL displayed (e.g., `http://localhost:7071/api/MyChatFunction`).
+    > Make a note of the URL displayed (e.g., `http://localhost:7071/api/MyChatFunction`).
 
 1. Start the test console application
    Open a second terminal and change directory to the `chatconsole` project folder (e.g., `myrepo/src/chatconsole`) and run the application using the Azure Function URL.
@@ -584,12 +585,18 @@ In this section we deploy the Qdrant vector database locally and populate it wit
     
 
 # Chapter 3: Azure Cognitive Search and Retrieval Augmented Generation
->TODO: overview
+>TODO: Explain how this chapter builds on the previous ones. Overview of Azure Cognitive Search, semantic search, RAG, etc. Also explain why we no longer need to generate embeddings ourselves when using Azure Cognitive Search.
+
+https://learn.microsoft.com/en-us/azure/search/semantic-search-overview#what-is-semantic-search
+Semantic search through memory store, add results as context to query
 
 ## Configure your environment
-> TODO: keys, permissions for ACS service
+Before you get started, make sure you have the following additional requirements:
+- An [admin key](https://learn.microsoft.com/en-us/azure/search/search-security-api-keys?tabs=portal-use%2Cportal-find%2Cportal-query#find-existing-keys) for your Azure Cognitive Search service, with semantic search enabled.
+  - For instructions on setting up an Azure Cognitive Search service instance, click [here](https://learn.microsoft.com/en-us/azure/search/search-create-service-portal).
+  - For instructions on enabling semantic search, click [here](https://learn.microsoft.com/en-us/azure/search/semantic-search-overview#enable-semantic-search).
 
-> TODO: set ACS endpoint and key as environment variables
+> TODO: Add instructions for setting the `AZURE_COGNITIVE_SEARCH_APIKEY` and `AZURE_COGNITIVE_SEARCH_ENDPOINT` environment variables.
 
 ## Update the memory store in our Azure Function
 1. Open a terminal window, change to the directory with your project file (e.g., `myrepo/src/myfunc`), 
@@ -614,8 +621,6 @@ In this section we deploy the Qdrant vector database locally and populate it wit
     
     Then, update the builder code where we instantiate the Semantic Kernel. We can remove the OpenAI embedding generation service and the Qdrant memory store from the builder, and replace them with the Azure Cognitive Search memory that we just created.
 
-    > TODO: explain why ACS doesn't need embedding service
-
     ```
     IKernel kernel = new KernelBuilder()
         .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
@@ -627,9 +632,7 @@ In this section we deploy the Qdrant vector database locally and populate it wit
         .Build();
     ```
 
-> TODO: What is difference between .WithMemory and .WithMemoryStorage? Also explain ISemanticTextMemory interface -- what is semantic text memory? How is this different than Qdrant, which implements IMemoryStore?
-
->  TODO: explain that we are using the same `SearchMemoriesAsync` function and why this doesn't need to be changed. Point back to where we added that in README.
+    > No changes need to be made to `SearchMemoriesAsync`, since it uses the kernel's semantic memory abstraction to generate context for the query. While the underlying memory source has changed, this abstraction has not.
 
 1. The complete code files (with additional comments).
     <details>
@@ -780,31 +783,28 @@ In this section we deploy the Qdrant vector database locally and populate it wit
    
 Before running our updated code, we'll need to populate an Azure Cognitive Search index.
 
-## Populate the search index - TODO
-In this section we create and populate an Azure Cognitive Search index with example data (i.e., Microsoft's 2022 10-K financial report). ~~This will take approximately 15 minutes to import and will use OpenAI’s embedding generation service to create embeddings for the 10-K.~~
+## Populate the search index
+In this section we create and populate an Azure Cognitive Search index with example data (i.e., Microsoft's 2022 10-K financial report). This will take approximately 5 minutes to import.
 
-1. Open a terminal, change directory to this repo, and run the `importmemories` tool to populate the vector database with your data.
+1. Open a terminal, change directory to this repo, and run the `importmemories` tool to populate the search index with your data.
     > Make sure the `--collection` argument matches the `collectionName` variable in the `SearchMemoriesAsync` method above.
     
-    > **Note:** This may take several minutes to several hours depending on the size of your data. This repo contains 
-      Microsoft's 2022 10-K financial report data as an example which should normally take about 15 minutes to import.
+    > **Note:** This may take several minutes to several hours depending on the size of your data. This repo contains Microsoft's 2022 10-K financial report data as an example which should normally take about 5 minutes to import.
         
 	```bash
     cd /src/semantic-kernel-rag-chat
     cd src/importmemories
     dotnet run -- --memory-store-type azurecognitivesearch --memory-store-url $AZURE_COGNITIVE_SEARCH_ENDPOINT --collection ms10k --text-file ../../data/ms10k.txt
 	```
-    > When importing your own data, try to import all files at the same time using multiple `--text-file` arguments. 
-    > This example leverages incremental indexes which are best constructed when all data is present. 
-    
-    > If you want to reset the memory store, TODO ~~delete and recreate the directory in step 2, or create a new directory to use.~~
+
+    > If you want to reset the memory store, you can delete the index from your service via the Azure portal or [the Azure Cognitive Search REST API](https://learn.microsoft.com/en-us/rest/api/searchservice/delete-index). The index name is the same as the `--collection` argument (e.g. `ms10k`).
 
 ## Run the function locally
 1. With the Azure Cognitive Search service running and populated, run your Azure Function locally by opening a terminal, changing directory to your Azure Function project (e.g., `myrepo/src/myfunc`), and starting the function by running
     ```bash
     func start
     ```
-    > Make note of the URL displayed (e.g., `http://localhost:7071/api/MyChatFunction`).
+    > Make a note of the URL displayed (e.g., `http://localhost:7071/api/MyChatFunction`).
 
 1. Start the test console application
    Open a second terminal and change directory to the `chatconsole` project folder (e.g., `myrepo/src/chatconsole`) and run the application using the Azure Function URL.

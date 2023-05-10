@@ -9,16 +9,16 @@ using Microsoft.SemanticKernel.Memory;
 
 namespace My.MyChatFunction
 {
-    public class Chapter2Function
+    public class Chapter3Function
     {
         private readonly ILogger _logger;
         private readonly IKernel _kernel;
         private readonly IChatCompletion _chat;
         private readonly ChatHistory _chatHistory;
 
-        public Chapter2Function(ILoggerFactory loggerFactory, IKernel kernel, ChatHistory chatHistory, IChatCompletion chat)
+        public Chapter3Function(ILoggerFactory loggerFactory, IKernel kernel, ChatHistory chatHistory, IChatCompletion chat)
         {
-            _logger = loggerFactory.CreateLogger<Chapter2Function>();
+            _logger = loggerFactory.CreateLogger<Chapter3Function>();
             _kernel = kernel;
             _chat = chat;
             _chatHistory = chatHistory;

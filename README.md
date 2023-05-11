@@ -21,8 +21,7 @@ Before you get started, make sure you have the following requirements in place:
 - [.NET 7.0 SDK](https://aka.ms/net70) for building and deploying .NET 7 projects.
 - [Azure Function Core Tools 4.x](https://aka.ms/azfn/coretools) for managing Azure Functions
 - [OpenAI API key](https://platform.openai.com/account/api-keys) for using the OpenAI API (or click [here](https://platform.openai.com/signup) to signup).
-
-> TODO: Add instructions for setting the `OPENAI_APIKEY` environment variable.
+  - Store this key as an environment variable called `OPENAI_APIKEY`.
 
 ## Create an Azure Function project.
 1. In Visual Studio Code, click on the Azure extension (or press `SHIFT+ALT+A`).
@@ -593,11 +592,12 @@ In this chapter, we will modify our chat function to use Azure Cognitive Search 
 
 ## Configure your environment
 Before you get started, make sure you have the following additional requirements:
-- An [admin key](https://learn.microsoft.com/en-us/azure/search/search-security-api-keys?tabs=portal-use%2Cportal-find%2Cportal-query#find-existing-keys) for your Azure Cognitive Search service, with semantic search enabled.
+- An instance of the Azure Cognitive Search service, with semantic search enabled.
   - For instructions on setting up an Azure Cognitive Search service instance, click [here](https://learn.microsoft.com/en-us/azure/search/search-create-service-portal).
   - For instructions on enabling semantic search, click [here](https://learn.microsoft.com/en-us/azure/search/semantic-search-overview#enable-semantic-search).
-
-> TODO: Add instructions for setting the `AZURE_COGNITIVE_SEARCH_APIKEY` and `AZURE_COGNITIVE_SEARCH_ENDPOINT` environment variables.
+- Set the following two environment variables:
+  - `AZURE_COGNITIVE_SEARCH_APIKEY`: an [admin key](https://learn.microsoft.com/en-us/azure/search/search-security-api-keys?tabs=portal-use%2Cportal-find%2Cportal-query#find-existing-keys) to your Azure Cognitive Search service
+  - `AZURE_COGNITIVE_SEARCH_ENDPOINT`: the URL to your Azure Cognitive Search endpoint.
 
 ## Update the memory store in our Azure Function
 1. Open a terminal window, change to the directory with your project file (e.g., `myrepo/src/myfunc`), 
@@ -812,24 +812,21 @@ In this section we create and populate an Azure Cognitive Search index with exam
    ```bash
    dotnet run http://localhost:7071/api/MyChatFunction
    ```
-1. Type a message and press enter to verify that we are able to chat with the AI!
+1. Type a message and press enter to verify that we are still able to chat with the AI.
     ```
-    Input: Hello, how are you?
-    AI: Hello! As an AI language model, I don't have feelings, but I'm functioning properly and ready to 
+    Input: Hi, how are you?
+    AI: Hello! I'm an AI language model, so I don't have feelings, but I'm here to 
     assist you. How can I help you today?
     ```
    
- 1. Now let's try ask the same question from before about Microsoft's 2022 revenue
+ 1. Now let's try asking the same questions from before about Microsoft's 2022 revenue.
     ```
     Input: What was Microsoft's cloud revenue for 2022?
-    AI: Microsoft's cloud revenue for 2022 was $91.2 billion.
+    AI: Microsoft's cloud revenue in fiscal year 2022 was $91.2 billion.
     ```
-    > The AI now has the ability to search through the Microsoft 10-K financial report and find the answer to our question.
-    > Let's try another...
     ```
     Input: Did linkedin's revenue grow in 2022?
-    AI: Yes, LinkedIn's revenue grew in 2022. It increased by $3.5 billion or 34% driven by a strong job 
-    market in the Talent Solutions business and advertising demand in the Marketing Solutions business.
+    AI: Yes, LinkedIn's revenue increased by 34% in fiscal year 2022 compared to the previous year.
     ```
     
 

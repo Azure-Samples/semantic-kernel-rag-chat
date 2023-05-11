@@ -585,10 +585,11 @@ In this section we deploy the Qdrant vector database locally and populate it wit
     
 
 # Chapter 3: Azure Cognitive Search and Retrieval Augmented Generation
->TODO: Explain how this chapter builds on the previous ones. Overview of Azure Cognitive Search, semantic search, RAG, etc. Also explain why we no longer need to generate embeddings ourselves when using Azure Cognitive Search.
+[Azure Cognitive Search](https://learn.microsoft.com/en-us/azure/search/search-what-is-azure-search) is a powerful cloud search service that enables developers to build rich search experiences across their own private and heterogenous data sources. With [semantic search](https://learn.microsoft.com/en-us/azure/search/semantic-search-overview#what-is-semantic-search), Azure Cognitive Search can produce more semantically relevant results for text-based queries.
 
-https://learn.microsoft.com/en-us/azure/search/semantic-search-overview#what-is-semantic-search
-Semantic search through memory store, add results as context to query
+This is an alternative to the vector-based approach we took in chapter 2. With semantic search, we no longer need to generate embeddings like we did in the previous chapter. Instead, a [semantic re-ranking process](https://learn.microsoft.com/en-us/azure/search/semantic-ranking) is applied to the initial set of search results, using the context and meaning of words to elevate the results that are most relevant.
+
+In this chapter, we will modify our chat function to use Azure Cognitive Search with semantic search as the backing memory store. We will once again demonstrate how we can use this memory to generate more meaningful results in our chat application.
 
 ## Configure your environment
 Before you get started, make sure you have the following additional requirements:

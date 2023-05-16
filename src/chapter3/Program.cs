@@ -11,7 +11,7 @@ var hostBuilder = new HostBuilder()
 
 hostBuilder.ConfigureAppConfiguration((context, config) =>
 {
-    config.AddJsonFile("appsettings.json");//.AddUserSecrets<Program>();
+    config.AddUserSecrets<Program>();
 });
 
 hostBuilder.ConfigureServices(services =>
@@ -29,7 +29,6 @@ hostBuilder.ConfigureServices(services =>
         IKernel kernel = new KernelBuilder()
             .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
             .Configure(config => config.AddOpenAIChatCompletionService(
-                serviceId: "chat",
                 modelId: "gpt-3.5-turbo",
                 apiKey: openAiApiKey))
             .WithMemory(memory)

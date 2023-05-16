@@ -1,4 +1,5 @@
 ﻿using BlingFire;
+using Microsoft.Extensions.Configuration;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.Memory.Qdrant;
 using Microsoft.SemanticKernel.Connectors.Memory.AzureCognitiveSearch;
@@ -22,14 +23,18 @@ internal class Program
         }
 
         IKernel kernel;
+        IConfiguration config = new ConfigurationBuilder()
+            .AddUserSecrets<Program>()
+            .Build();
 
         if (memoryType.Equals("qdrant", StringComparison.InvariantCultureIgnoreCase))
         {
-            // Get the OpenAI API key from the environment.
-            string? openAiApiKey = Environment.GetEnvironmentVariable("OPENAI_APIKEY");
+            // Get the OpenAI API key from the configuration.
+            string? openAiApiKey = config["OPENAI_APIKEY"];
+
             if (string.IsNullOrWhiteSpace(openAiApiKey))
             {
-                Console.Error.WriteLine("Please set the 'OPENAI_APIKEY' environment variable with your OpenAI API key.");
+                Console.Error.WriteLine("Please set the 'OPENAI_APIKEY' user secret with your OpenAI API key.");
                 return;
             }
 
@@ -43,7 +48,6 @@ internal class Program
             // Create a new kernel with an OpenAI Embedding Generation service.
             kernel = new KernelBuilder()
                 .Configure(c => c.AddOpenAITextEmbeddingGenerationService(
-                    serviceId: "embedding",
                     modelId: "text-embedding-ada-002",
                     apiKey: openAiApiKey))
                 .WithMemoryStorage(memoryStore)
@@ -53,10 +57,11 @@ internal class Program
         else if (memoryType.Equals("azurecognitivesearch", StringComparison.InvariantCultureIgnoreCase))
         {
             // Get the Azure Cognitive Search API key from the environment.
-            string? azureCognitiveSearchApiKey = Environment.GetEnvironmentVariable("AZURE_COGNITIVE_SEARCH_APIKEY");
+            string? azureCognitiveSearchApiKey = config["AZURE_COGNITIVE_SEARCH_APIKEY"];
+
             if (string.IsNullOrWhiteSpace(azureCognitiveSearchApiKey))
             {
-                Console.Error.WriteLine("Please set the 'AZURE_COGNITIVE_SEARCH_APIKEY' environment variable with your Azure Cognitive Search API key.");
+                Console.Error.WriteLine("Please set the 'AZURE_COGNITIVE_SEARCH_APIKEY' user secret with your Azure Cognitive Search API key.");
                 return;
             }
 
@@ -72,7 +77,7 @@ internal class Program
         }
         else
         {
-            Console.Error.WriteLine("Not a supported memory store type. Use '--help' for usage.");
+            Console.Error.WriteLine("Not a supported memory type. Use '--help' for usage.");
             return;
         }
 

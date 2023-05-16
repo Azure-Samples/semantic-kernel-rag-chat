@@ -30,11 +30,9 @@ hostBuilder.ConfigureServices(services =>
         IKernel kernel = new KernelBuilder()
             .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
             .Configure(config => config.AddOpenAIChatCompletionService(
-                serviceId: "chat",
                 modelId: "gpt-3.5-turbo",
                 apiKey: openAiApiKey))
             .Configure(c => c.AddOpenAITextEmbeddingGenerationService(
-                serviceId: "embedding",
                 modelId: "text-embedding-ada-002",
                 apiKey: openAiApiKey))
             .WithMemoryStorage(memoryStore)

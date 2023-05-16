@@ -43,11 +43,14 @@ Before you get started, make sure you have the following requirements in place:
     dotnet add package Microsoft.SemanticKernel --prerelease
     ```
 
-    In addition, use the `dotnet user-secrets` commands below to do a one-time initialization and then securely store your OpenAI API key.
+    In addition, use the commands below to configure .NET User Secrets and then securely store your OpenAI API key.
     ```bash
-    dotnet user-secrets init
+    dotnet add package Microsoft.Extensions.Configuration.UserSecrets
+    dotnet user-secrets init --id MySemanticKernelChatFunction
     dotnet user-secrets set "OPENAI_APIKEY" "..."
     ```
+
+    > Make sure to specify `MySemanticKernelChatFunction` as the `--id` parameter. This will enable you to access your secrets from any of the projects in this repository.
 
 1. Back in your Azure Function project in Visual Studio Code, open the `Program.cs` file and replace everything in the file with the content below. 
     > This updates the `HostBuilder` to read configuration variables from user secrets and sets up a reference to the SK runtime.
@@ -84,7 +87,6 @@ Before you get started, make sure you have the following requirements in place:
             IKernel kernel = new KernelBuilder()
                 .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
                 .Configure(config => config.AddOpenAIChatCompletionService(
-                    serviceId: "chat",
                     modelId: "gpt-3.5-turbo",
                     apiKey: openAiApiKey))
                 .Build();
@@ -169,7 +171,6 @@ Before you get started, make sure you have the following requirements in place:
             IKernel kernel = new KernelBuilder()
                 .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
                 .Configure(config => config.AddOpenAIChatCompletionService(
-                    serviceId: "chat",
                     modelId: "gpt-3.5-turbo",
                     apiKey: openAiApiKey))
                 .Build();
@@ -308,11 +309,9 @@ Before you get started, make sure you have the following additional requirements
      IKernel kernel = new KernelBuilder()
         .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
         .Configure(config => config.AddOpenAIChatCompletionService(
-            serviceId: "chat",
             modelId: "gpt-3.5-turbo",
             apiKey: openAiApiKey))
         .Configure(c => c.AddOpenAITextEmbeddingGenerationService(
-            serviceId: "embedding",
             modelId: "text-embedding-ada-002",
             apiKey: openAiApiKey))
         .WithMemoryStorage(memoryStore)
@@ -431,11 +430,9 @@ Before you get started, make sure you have the following additional requirements
             IKernel kernel = new KernelBuilder()
                 .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
                 .Configure(config => config.AddOpenAIChatCompletionService(
-                    serviceId: "chat",
                     modelId: "gpt-3.5-turbo",
                     apiKey: openAiApiKey))
                 .Configure(c => c.AddOpenAITextEmbeddingGenerationService(
-                    serviceId: "embedding",
                     modelId: "text-embedding-ada-002",
                     apiKey: openAiApiKey))
                 .WithMemoryStorage(memoryStore)
@@ -658,11 +655,10 @@ Before you get started, make sure you have the following additional requirements
     
     Then, update the builder code where we instantiate the Semantic Kernel. We can remove the OpenAI embedding generation service and the Qdrant memory store from the builder, and replace them with the Azure Cognitive Search memory that we just created.
 
-    ```
+    ```csharp
     IKernel kernel = new KernelBuilder()
         .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
         .Configure(config => config.AddOpenAIChatCompletionService(
-            serviceId: "chat",
             modelId: "gpt-3.5-turbo",
             apiKey: openAiApiKey))
         .WithMemory(memory)
@@ -710,7 +706,6 @@ Before you get started, make sure you have the following additional requirements
             IKernel kernel = new KernelBuilder()
                 .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
                 .Configure(config => config.AddOpenAIChatCompletionService(
-                    serviceId: "chat",
                     modelId: "gpt-3.5-turbo",
                     apiKey: openAiApiKey))
                 .WithMemory(memory)

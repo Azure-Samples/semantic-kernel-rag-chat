@@ -8,11 +8,11 @@ internal class Program
     /// <summary>
     /// This program imports text files into a Qdrant VectorDB using Semantic Kernel.
     /// </summary>
-    /// <param name="memoryStoreType">Either "qdrant" or "azurecognitivesearch"</param>
-    /// <param name="memoryStoreUrl">The URL to a running Qdrant VectorDB (e.g., http://localhost:6333) or to your Azure Cognitive Search endpoint.</param>
+    /// <param name="memoryType">Either "qdrant" or "azurecognitivesearch"</param>
+    /// <param name="memoryUrl">The URL to a running Qdrant VectorDB (e.g., http://localhost:6333) or to your Azure Cognitive Search endpoint.</param>
     /// <param name="collection">Name of the database collection in which to import (e.g., "mycollection").</param>
     /// <param name="textFile">Text files to import.</param>
-    static async Task Main(string memoryStoreType, string memoryStoreUrl, string collection, params FileInfo[] textFile)
+    static async Task Main(string memoryType, string memoryUrl, string collection, params FileInfo[] textFile)
     {
         // Validate arguments.
         if (textFile.Length == 0)
@@ -23,7 +23,7 @@ internal class Program
 
         IKernel kernel;
 
-        if (memoryStoreType.Equals("qdrant", StringComparison.InvariantCultureIgnoreCase))
+        if (memoryType.Equals("qdrant", StringComparison.InvariantCultureIgnoreCase))
         {
             // Get the OpenAI API key from the environment.
             string? openAiApiKey = Environment.GetEnvironmentVariable("OPENAI_APIKEY");
@@ -34,7 +34,7 @@ internal class Program
             }
 
             // Create a new memory store that will store the embeddings in Qdrant.
-            Uri qdrantUri = new Uri(memoryStoreUrl);
+            Uri qdrantUri = new Uri(memoryUrl);
             QdrantMemoryStore memoryStore = new QdrantMemoryStore(
                 host: $"{qdrantUri.Scheme}://{qdrantUri.Host}",
                 port: qdrantUri.Port,
@@ -50,7 +50,7 @@ internal class Program
                 .Build();
 
         }
-        else if (memoryStoreType.Equals("azurecognitivesearch", StringComparison.InvariantCultureIgnoreCase))
+        else if (memoryType.Equals("azurecognitivesearch", StringComparison.InvariantCultureIgnoreCase))
         {
             // Get the Azure Cognitive Search API key from the environment.
             string? azureCognitiveSearchApiKey = Environment.GetEnvironmentVariable("AZURE_COGNITIVE_SEARCH_APIKEY");
@@ -61,7 +61,7 @@ internal class Program
             }
 
             AzureCognitiveSearchMemory memory = new AzureCognitiveSearchMemory(
-                memoryStoreUrl,
+                memoryUrl,
                 azureCognitiveSearchApiKey
             );
 

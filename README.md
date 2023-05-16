@@ -21,12 +21,11 @@ Before you get started, make sure you have the following requirements in place:
 - [.NET 7.0 SDK](https://aka.ms/net70) for building and deploying .NET 7 projects.
 - [Azure Function Core Tools 4.x](https://aka.ms/azfn/coretools) for managing Azure Functions
 - [OpenAI API key](https://platform.openai.com/account/api-keys) for using the OpenAI API (or click [here](https://platform.openai.com/signup) to signup).
-  - Store this key as an environment variable called `OPENAI_APIKEY`.
 
 ## Create an Azure Function project.
-1. In Visual Studio Code, click on the Azure extension (or press `SHIFT+ALT+A`).
-1. Mouse-over `WORKSPACE` and select `Create Function` (i.e., +⚡) to create a new local Azure function project.
-1. Select `Browse`, choose/create the folder where you want to create your Azure Function code (e.g., `myrepo/src/myfunc`) then use the selections below when creating the project:
+1. Open a new Visual Studio Code window and click on the Azure extension (or press `SHIFT+ALT+A`).
+1. Mouse-over `WORKSPACE` (in the lower left pane) and select `Create Function` (i.e., +⚡) to create a new local Azure function project.
+1. Select `Browse`, choose/create the folder where you want to create your Azure Function code (e.g., `semantic-kernel-rag-chat/src/myfunc`) then use the selections below when creating the project:
 
    | Selection       | Value                       |
    | ---------       | -----                       |
@@ -38,14 +37,20 @@ Before you get started, make sure you have the following requirements in place:
    | Access rights   | `Function`                  |
 
 ## Add Semantic Kernel to your Azure Function
-1. Open a terminal window, change to the directory with your project file (e.g., `myrepo/src/myfunc`), 
-   and run the `dotnet` command below to add the Semantic Kernel NuGet package to your project.
-   ```bash
-   dotnet add package Microsoft.SemanticKernel --prerelease
-   ```
+1. Open a terminal window, change to the directory with your project file (e.g., `semantic-kernel-rag-chat/src/myfunc`), 
+    and run the `dotnet` command below to add the Semantic Kernel NuGet package to your project.
+    ```bash
+    dotnet add package Microsoft.SemanticKernel --prerelease
+    ```
+
+    In addition, use the `dotnet user-secrets` commands below to do a one-time initialization and then securely store your OpenAI API key.
+    ```bash
+    dotnet user-secrets init
+    dotnet user-secrets set "OPENAI_APIKEY" "..."
+    ```
 
 1. Back in your Azure Function project in Visual Studio Code, open the `Program.cs` file and replace everything in the file with the content below. 
-    > This updates the `HostBuilder` to read configuration variables from the environment and sets up a reference to the SK runtime.
+    > This updates the `HostBuilder` to read configuration variables from user secrets and sets up a reference to the SK runtime.
     ```csharp
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
@@ -59,7 +64,7 @@ Before you get started, make sure you have the following requirements in place:
 
     hostBuilder.ConfigureAppConfiguration((context, config) =>
     {
-        config.AddEnvironmentVariables();
+        config.AddUserSecrets<Program>();
     });
 
     hostBuilder.Build().Run();
@@ -149,14 +154,14 @@ Before you get started, make sure you have the following requirements in place:
 
     hostBuilder.ConfigureAppConfiguration((context, config) =>
     {
-        config.AddEnvironmentVariables();
+        config.AddUserSecrets<Program>();
     });
 
     hostBuilder.ConfigureServices(services =>
     {
         services.AddSingleton<IKernel>(sp =>
         {
-            // Retrieve the OpenAI API key from the configuration/environment.
+            // Retrieve the OpenAI API key from the configuration.
             IConfiguration configuration = sp.GetRequiredService<IConfiguration>();
             string openAiApiKey = configuration["OPENAI_APIKEY"];
 
@@ -235,14 +240,14 @@ Before you get started, make sure you have the following requirements in place:
     </details>
 
 ## Run the function locally
-1. Run your Azure Function locally by opening a terminal, changing directory to your Azure Function project (e.g., `myrepo/src/myfunc`), and starting the function by running
+1. Run your Azure Function locally by opening a terminal, changing directory to your Azure Function project (e.g., `semantic-kernel-rag-chat/src/myfunc`), and starting the function by running
     ```bash
     func start
     ```
     > Make note of the URL displayed (e.g., `http://localhost:7071/api/MyChatFunction`).
 
 1. Start the test console application
-   Open a second terminal and change directory to the `chatconsole` project folder (e.g., `myrepo/src/chatconsole`) and run the application using the Azure Function URL.
+   Open a second terminal and change directory to the `chatconsole` project folder (e.g., `semantic-kernel-rag-chat/src/chatconsole`) and run the application using the Azure Function URL.
    ```bash
    dotnet run http://localhost:7071/api/MyChatFunction
    ```
@@ -281,8 +286,8 @@ Before you get started, make sure you have the following additional requirements
    > Note that a different vector store, such as Pinecone or Weviate, could be leveraged.
 
 ## Add a memory store in our Azure Function
-1. Open a terminal window, change to the directory with your project file (e.g., `myrepo/src/myfunc`), 
-   and run the `dotnet` commands below to add the Semantic Kernel Qdrant Memory Store to your project.
+1. Open a terminal window, change to the directory with your project file (e.g., `semantic-kernel-rag-chat/src/myfunc`), 
+   and run the `dotnet` command below to add the Semantic Kernel Qdrant Memory Store to your project.
     ```bash
     dotnet add package Microsoft.SemanticKernel.Connectors.Memory.Qdrant --prerelease
     ```
@@ -404,14 +409,14 @@ Before you get started, make sure you have the following additional requirements
 
     hostBuilder.ConfigureAppConfiguration((context, config) =>
     {
-        config.AddEnvironmentVariables();
+        config.AddUserSecrets<Program>();
     });
 
     hostBuilder.ConfigureServices(services =>
     {
         services.AddSingleton<IKernel>(sp =>
         {
-            // Retrieve the OpenAI API key from the configuration/environment.
+            // Retrieve the OpenAI API key from the configuration.
             IConfiguration configuration = sp.GetRequiredService<IConfiguration>();
             string openAiApiKey = configuration["OPENAI_APIKEY"];
 
@@ -576,14 +581,14 @@ In this section we deploy the Qdrant vector database locally and populate it wit
     > If you want to reset the memory store, delete and recreate the directory in step 2, or create a new directory to use.
         
 ## Run the function locally
-1. With Qdrant running and populated, run your Azure Function locally by opening a terminal, changing directory to your Azure Function project (e.g., `myrepo/src/myfunc`), and starting the function by running
+1. With Qdrant running and populated, run your Azure Function locally by opening a terminal, changing directory to your Azure Function project (e.g., `semantic-kernel-rag-chat/src/myfunc`), and starting the function by running
     ```bash
     func start
     ```
     > Make a note of the URL displayed (e.g., `http://localhost:7071/api/MyChatFunction`).
 
 1. Start the test console application
-   Open a second terminal and change directory to the `chatconsole` project folder (e.g., `myrepo/src/chatconsole`) and run the application using the Azure Function URL.
+   Open a second terminal and change directory to the `chatconsole` project folder (e.g., `semantic-kernel-rag-chat/src/chatconsole`) and run the application using the Azure Function URL.
    ```bash
    dotnet run http://localhost:7071/api/MyChatFunction
    ```
@@ -620,15 +625,21 @@ Before you get started, make sure you have the following additional requirements
 - An instance of the Azure Cognitive Search service, with semantic search enabled.
   - For instructions on setting up an Azure Cognitive Search service instance, click [here](https://learn.microsoft.com/en-us/azure/search/search-create-service-portal).
   - For instructions on enabling semantic search, click [here](https://learn.microsoft.com/en-us/azure/search/semantic-search-overview#enable-semantic-search).
-- Set the following two environment variables:
+- To connect to the service, you will need the following two pieces of data:
   - `AZURE_COGNITIVE_SEARCH_APIKEY`: an [admin key](https://learn.microsoft.com/en-us/azure/search/search-security-api-keys?tabs=portal-use%2Cportal-find%2Cportal-query#find-existing-keys) to your Azure Cognitive Search service
-  - `AZURE_COGNITIVE_SEARCH_URL`: the URL to your Azure Cognitive Search endpoint.
+  - `AZURE_COGNITIVE_SEARCH_URL`: the URL to your Azure Cognitive Search endpoint
 
 ## Update the memory store in our Azure Function
-1. Open a terminal window, change to the directory with your project file (e.g., `myrepo/src/myfunc`), 
-   and run the `dotnet` commands below to add the Semantic Kernel Azure Cognitive Search connector to your project.
+1. Open a terminal window, change to the directory with your project file (e.g., `semantic-kernel-rag-chat/src/myfunc`), 
+   and run the `dotnet` command below to add the Semantic Kernel Azure Cognitive Search connector to your project.
     ```bash
     dotnet add package Microsoft.SemanticKernel.Connectors.Memory.AzureCognitiveSearch --prerelease
+    ```
+
+    In addition, use the `dotnet user-secrets` commands below to securely store your Azure Cognitive Search API key and endpoint URL.
+    ```bash
+    dotnet user-secrets set "AZURE_COGNITIVE_SEARCH_APIKEY" "..."
+    dotnet user-secrets set "AZURE_COGNITIVE_SEARCH_URL" "..."
     ```
 
 1. Open your Program code file (e.g., `Program.cs`) and add the Azure Cognitive Search connector using statement to the top.
@@ -678,14 +689,14 @@ Before you get started, make sure you have the following additional requirements
 
     hostBuilder.ConfigureAppConfiguration((context, config) =>
     {
-        config.AddEnvironmentVariables();
+        config.AddUserSecrets<Program>();
     });
 
     hostBuilder.ConfigureServices(services =>
     {
         services.AddSingleton<IKernel>(sp =>
         {
-            // Retrieve the OpenAI API key from the configuration/environment.
+            // Retrieve the OpenAI API key from the configuration.
             IConfiguration configuration = sp.GetRequiredService<IConfiguration>();
             string openAiApiKey = configuration["OPENAI_APIKEY"];
 
@@ -826,14 +837,14 @@ In this section we create and populate an Azure Cognitive Search index with exam
     > If you want to reset the memory store, you can delete the index from your service via the Azure portal or [the Azure Cognitive Search REST API](https://learn.microsoft.com/en-us/rest/api/searchservice/delete-index). The index name is the same as the `--collection` argument (e.g. `ms10k`).
 
 ## Run the function locally
-1. With the Azure Cognitive Search service running and populated, run your Azure Function locally by opening a terminal, changing directory to your Azure Function project (e.g., `myrepo/src/myfunc`), and starting the function by running
+1. With the Azure Cognitive Search service running and populated, run your Azure Function locally by opening a terminal, changing directory to your Azure Function project (e.g., `semantic-kernel-rag-chat/src/myfunc`), and starting the function by running
     ```bash
     func start
     ```
     > Make a note of the URL displayed (e.g., `http://localhost:7071/api/MyChatFunction`).
 
 1. Start the test console application
-   Open a second terminal and change directory to the `chatconsole` project folder (e.g., `myrepo/src/chatconsole`) and run the application using the Azure Function URL.
+   Open a second terminal and change directory to the `chatconsole` project folder (e.g., `semantic-kernel-rag-chat/src/chatconsole`) and run the application using the Azure Function URL.
    ```bash
    dotnet run http://localhost:7071/api/MyChatFunction
    ```

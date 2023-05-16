@@ -11,7 +11,7 @@ var hostBuilder = new HostBuilder()
 
 hostBuilder.ConfigureAppConfiguration((context, config) =>
 {
-    config.AddEnvironmentVariables();
+    config.AddJsonFile("appsettings.json");//.AddUserSecrets<Program>();
 });
 
 hostBuilder.ConfigureServices(services =>

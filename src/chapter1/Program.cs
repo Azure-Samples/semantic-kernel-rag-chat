@@ -10,7 +10,7 @@ var hostBuilder = new HostBuilder()
 
 hostBuilder.ConfigureAppConfiguration((context, config) =>
 {
-    config.AddEnvironmentVariables();
+    config.AddUserSecrets<Program>();
 });
 
 hostBuilder.ConfigureServices(services =>

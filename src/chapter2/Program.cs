@@ -11,7 +11,7 @@ var hostBuilder = new HostBuilder()
 
 hostBuilder.ConfigureAppConfiguration((context, config) =>
 {
-    config.AddEnvironmentVariables();
+    config.AddUserSecrets<Program>();
 });
 
 hostBuilder.ConfigureServices(services =>
@@ -34,7 +34,7 @@ hostBuilder.ConfigureServices(services =>
                 modelId: "gpt-3.5-turbo",
                 apiKey: openAiApiKey))
             .Configure(c => c.AddOpenAITextEmbeddingGenerationService(
-                serviceId: "text-embedding-ada-002",
+                serviceId: "embedding",
                 modelId: "text-embedding-ada-002",
                 apiKey: openAiApiKey))
             .WithMemoryStorage(memoryStore)

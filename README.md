@@ -1,14 +1,14 @@
-# Tutorial: ChatGPT + Enterprise data with Semantic Kernel, Azure OpenAI and Azure Cognitive Search
-This progressive tutorial is for building your own AI chat application informed with your enterprise data. In chapter one, we start with building a simple [ChatGPT](https://platform.openai.com/docs/models/gpt-3-5)-like application. Chapter two imports files (PDFs) into a “Memories Store” for reference by the [Semantic Kernel](https://aka.ms/skrepo) (SK) orchestrator when chatting. Having the data from these PDFs allows SK to build better Prompts so the AI can offer better answers to questions – this is a key part of the Retrieval Augmented Generation pattern. Chapter three extends the context of the chat by using [Azure Cognitive Search](https://learn.microsoft.com/en-us/azure/search/) for data indexing and retrieval.
+# Tutorial: ChatGPT + Enterprise data with Semantic Kernel, OpenAI and Azure Cognitive Search
+This progressive tutorial is for building your own AI chat application informed with your enterprise data. In Chapter 1, we start with building a simple [ChatGPT](https://platform.openai.com/docs/models/gpt-3-5)-like application using [Semantic Kernel](https://aka.ms/skrepo) (SK). Chapter 2 imports files into a “Memories Store” for reference by the SK orchestrator when chatting. Having the data from these files allows SK to build better prompts so the AI can offer better answers to questions – this is a key part of the Retrieval Augmented Generation (RAG) pattern. Chapter 3 extends the context of the chat application by using [Azure Cognitive Search](https://learn.microsoft.com/en-us/azure/search/) for data indexing and retrieval.
 
-In all, this tutorial creates a minimal implementation for using [Semantic Kernel](https://aka.ms/skrepo) as a foundation for enabling enterprise data ingestion, long-term memory, plug-ins, and more.
+In all, this tutorial creates a minimal implementation for using Semantic Kernel as a foundation for enabling enterprise data ingestion, long-term memory, plug-ins, and more.
 
 Special thanks to Adam Hurwitz's for his [SemanticQuestion10K](https://github.com/adhurwit/SemanticQuestion10K) sample, which was used in Chapter 2.
 
-- [x] [Chapter 1: ChatGPT](#chapter-1-chatgpt) - **complete**
-- [x] [Chapter 2: Memories of Enterprise Data](#chapter-2-memories-of-enterprise-data) - **complete**
-- [x] [Chapter 3: Azure Cognitive Search and Retrieval Augmented Generation](#chapter-3-azure-cognitive-search-and-retrieval-augmented-generation) - **complete**
-
+- [Chapter 1: ChatGPT](#chapter-1-chatgpt)
+- [Chapter 2: Memories of Enterprise Data](#chapter-2-memories-of-enterprise-data)
+- [Chapter 3: Azure Cognitive Search and Retrieval Augmented Generation](#chapter-3-azure-cognitive-search-and-retrieval-augmented-generation)
+- [Appendix](#appendix)
 
 # Chapter 1: ChatGPT
 In this section, we will create a minimal chat implementation for a chat application that uses Semantic Kernel as a foundation for enterprise data ingestion, long-term memory, plug-ins, and more. We will write a C# Azure Function in detail from scratch that wraps all AI calls using SK and we will use a prebuilt C# console app as our UI for the chat app.
@@ -22,10 +22,17 @@ Before you get started, make sure you have the following requirements in place:
 - [Azure Function Core Tools 4.x](https://aka.ms/azfn/coretools) for managing Azure Functions
 - [OpenAI API key](https://platform.openai.com/account/api-keys) for using the OpenAI API (or click [here](https://platform.openai.com/signup) to signup).
 
-## Create an Azure Function project.
+
+Then, open a terminal and clone this repo with the following command:
+
+```bash
+git clone https://github.com/Azure-Samples/semantic-kernel-rag-chat
+```
+
+## Create an Azure Function project
 1. Open a new Visual Studio Code window and click on the Azure extension (or press `SHIFT+ALT+A`).
 1. Mouse-over `WORKSPACE` (in the lower left pane) and select `Create Function` (i.e., +⚡) to create a new local Azure function project.
-1. Select `Browse`, choose/create the folder where you want to create your Azure Function code (e.g., `semantic-kernel-rag-chat/src/myfunc`) then use the selections below when creating the project:
+1. Select `Browse` and create a folder inside the cloned repo to house your Azure Function code (e.g., `semantic-kernel-rag-chat/src/myfunc`). Then use the selections below when creating the project:
 
    | Selection       | Value                       |
    | ---------       | -----                       |
@@ -36,8 +43,10 @@ Before you get started, make sure you have the following requirements in place:
    | Namespace       | `My.MyChatFunction`         |
    | Access rights   | `Function`                  |
 
+Now close and reopen Visual Studio Code, this time opening the `semantic-kernel-rag-chat` folder so you can view and interact with the entire repository.
+
 ## Add Semantic Kernel to your Azure Function
-1. Open a terminal window, change to the directory with your project file (e.g., `semantic-kernel-rag-chat/src/myfunc`), 
+1. Open a terminal window, change to the directory with your Azure Function project file (e.g., `semantic-kernel-rag-chat/src/myfunc`), 
     and run the `dotnet` command below to add the Semantic Kernel NuGet package to your project.
     ```bash
     dotnet add package Microsoft.SemanticKernel --prerelease
@@ -46,11 +55,11 @@ Before you get started, make sure you have the following requirements in place:
     In addition, use the commands below to configure .NET User Secrets and then securely store your OpenAI API key.
     ```bash
     dotnet add package Microsoft.Extensions.Configuration.UserSecrets
-    dotnet user-secrets init --id MySemanticKernelChatFunction
+    dotnet user-secrets init --id semantic-kernel-rag-chat
     dotnet user-secrets set "OPENAI_APIKEY" "..."
     ```
 
-    > Make sure to specify `MySemanticKernelChatFunction` as the `--id` parameter. This will enable you to access your secrets from any of the projects in this repository.
+    > Make sure to specify `semantic-kernel-rag-chat` as the `--id` parameter. This will enable you to access your secrets from any of the projects in this repository.
 
 1. Back in your Azure Function project in Visual Studio Code, open the `Program.cs` file and replace everything in the file with the content below. 
     > This updates the `HostBuilder` to read configuration variables from user secrets and sets up a reference to the SK runtime.
@@ -298,7 +307,7 @@ Before you get started, make sure you have the following additional requirements
     using Microsoft.SemanticKernel.Connectors.Memory.Qdrant;
     ```
 
-    Replace the builder code we wrote in Chapter #1, where we instantiate the Semantic Kernel, to include a Qdrant memory store and an OpenAI embedding generation service.
+    Replace the builder code we wrote in Chapter 1, where we instantiate the kernel, to include a Qdrant memory store and an OpenAI embedding generation service.
     ```csharp
     QdrantMemoryStore memoryStore = new QdrantMemoryStore(
         host: "http://localhost",
@@ -610,7 +619,7 @@ In this section we deploy the Qdrant vector database locally and populate it wit
 # Chapter 3: Azure Cognitive Search and Retrieval Augmented Generation
 [Azure Cognitive Search](https://learn.microsoft.com/en-us/azure/search/search-what-is-azure-search) is a powerful cloud search service that enables developers to build rich search experiences across their own private and heterogenous data sources. With [semantic search](https://learn.microsoft.com/en-us/azure/search/semantic-search-overview#what-is-semantic-search), Azure Cognitive Search can produce more semantically relevant results for text-based queries.
 
-This is an alternative to the vector-based approach we took in chapter 2. With semantic search, we no longer need to generate embeddings like we did in the previous chapter. Instead, a [semantic re-ranking process](https://learn.microsoft.com/en-us/azure/search/semantic-ranking) is applied to the initial set of search results, using the context and meaning of words to elevate the results that are most relevant.
+This is an alternative to the vector-based approach we took in Chapter 2. With semantic search, we no longer need to generate embeddings like we did in the previous chapter. Instead, a [semantic re-ranking process](https://learn.microsoft.com/en-us/azure/search/semantic-ranking) is applied to the initial set of search results, using the context and meaning of words to elevate the results that are most relevant.
 
 In this chapter, we will modify our chat function to use Azure Cognitive Search with semantic search. We will once again demonstrate how we can use this memory to generate more meaningful results in our chat application.
 
@@ -641,7 +650,7 @@ Before you get started, make sure you have the following additional requirements
     using Microsoft.SemanticKernel.Connectors.Memory.AzureCognitiveSearch;
     ```
 
-    Replace the Qdrant memory store that we added in Chapter #2 with the Azure Cognitive Search memory connector.
+    Replace the Qdrant memory store that we added in Chapter 2 with the Azure Cognitive Search memory connector.
 
     ```csharp
     AzureCognitiveSearchMemory memory = new AzureCognitiveSearchMemory(
@@ -650,7 +659,7 @@ Before you get started, make sure you have the following additional requirements
     );
     ```
     
-    Then, update the builder code where we instantiate the Semantic Kernel. We can remove the OpenAI embedding generation service and the Qdrant memory store from the builder, and replace them with the Azure Cognitive Search memory that we just created.
+    Then, update the builder code where we instantiate the kernel. We can remove the OpenAI embedding generation service and the Qdrant memory store from the builder, and replace them with the Azure Cognitive Search memory that we just created.
 
     ```csharp
     IKernel kernel = new KernelBuilder()
@@ -858,7 +867,6 @@ In this section we create and populate an Azure Cognitive Search index with exam
 
 # Appendix
 ## Deploy Azure Function to Azure
-> **WORK IN-PROGRESS**
 1. If you don't already have an Azure account go to https://azure.microsoft.com, click on `Try Azure for free`, and select `Start Free` to start creating a free Azure account with your Microsoft or GitHub account. After signing in, you will be prompted to enter some information.
 
     > This tutorial uses **Azure Functions** ([pricing](https://azure.microsoft.com/en-us/pricing/details/functions/)) and **Azure Cognitive Search** ([pricing](https://azure.microsoft.com/pricing/details/search/)) that may incur a monthly cost. Visit [here](https://azure.microsoft.com/free/cognitive-search/) to get some free Azure credits to get you started.

@@ -552,24 +552,21 @@ In this section we deploy the Qdrant vector database locally and populate it wit
     docker pull qdrant/qdrant
     ```
 
-1. Change directory to this repo and create a `./data/qdrant` directory for Qdrant to use as persistent storage. 
+1. Change directory to the root of this repo (e.g., `semantic-kernel-rag-chat`) and create a `./data/qdrant` directory for Qdrant to use as persistent storage.
    Then start the Qdrant container on port `6333` using the `./data/qdrant` folder as the persistent storage location.
     ```bash
-    cd /src/semantic-kernel-rag-chat
     mkdir ./data/qdrant
     docker run --name mychat -p 6333:6333 -v "$(pwd)/data/qdrant:/qdrant/storage" qdrant/qdrant
     ```
     > To stop the container, in another terminal window run `docker container stop mychat; docker container rm mychat;`.
 
-1. Open a second terminal, change directory to this repo, and run the `importmemories` tool to populate the vector database with your data.
+1. Open a second terminal and change directory to the `importmemories` project folder in this repo (e.g., `semantic-kernel-rag-chat/src/importmemories`). Run the `importmemories` tool with the command below to populate the vector database with your data.
     > Make sure the `--collection` argument matches the `collectionName` variable in the `SearchMemoriesAsync` method above.
     
     > **Note:** This may take several minutes to several hours depending on the size of your data. This repo contains 
       Microsoft's 2022 10-K financial report data as an example which should normally take about 15 minutes to import.
         
 	```bash
-    cd /src/semantic-kernel-rag-chat
-    cd src/importmemories
     dotnet run -- --memory-type qdrant --memory-url http://localhost:6333 --collection ms10k --text-file ../../data/ms10k.txt
 	```
     > When importing your own data, try to import all files at the same time using multiple `--text-file` arguments. 
@@ -818,14 +815,12 @@ Before running our updated code, we'll need to populate an Azure Cognitive Searc
 ## Populate the search index
 In this section we create and populate an Azure Cognitive Search index with example data (i.e., Microsoft's 2022 10-K financial report). This will take approximately 5 minutes to import.
 
-1. Open a terminal, change directory to this repo, and run the `importmemories` tool to populate the search index with your data.
+1. Open a terminal and change directory to the `importmemories` project folder in this repo. Run the `importmemories` tool with the command below to populate the search index with your data.
     > Make sure the `--collection` argument matches the `collectionName` variable in the `SearchMemoriesAsync` method above.
     
     > **Note:** This may take several minutes to several hours depending on the size of your data. This repo contains Microsoft's 2022 10-K financial report data as an example which should normally take about 5 minutes to import.
         
 	```bash
-    cd /src/semantic-kernel-rag-chat
-    cd src/importmemories
     dotnet run -- --memory-type azurecognitivesearch --memory-url $AZURE_COGNITIVE_SEARCH_URL --collection ms10k --text-file ../../data/ms10k.txt
 	```
 

@@ -10,7 +10,7 @@ var hostBuilder = new HostBuilder()
 
 hostBuilder.ConfigureAppConfiguration((context, config) =>
 {
-    config.AddEnvironmentVariables();
+    config.AddUserSecrets<Program>();
 });
 
 hostBuilder.ConfigureServices(services =>
@@ -18,14 +18,13 @@ hostBuilder.ConfigureServices(services =>
     services.AddSingleton<IKernel>(sp =>
     {
         IConfiguration configuration = sp.GetRequiredService<IConfiguration>();
-        string apiKey = configuration["OPENAI_APIKEY"];
+        string openAiApiKey = configuration["OPENAI_APIKEY"];
 
         IKernel kernel = new KernelBuilder()
             .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
             .Configure(config => config.AddOpenAIChatCompletionService(
-                serviceId: "chat",
                 modelId: "gpt-3.5-turbo",
-                apiKey: apiKey))
+                apiKey: openAiApiKey))
             .Build();
 
         return kernel;

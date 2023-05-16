@@ -7,11 +7,11 @@ Special thanks to Adam Hurwitz's for his [SemanticQuestion10K](https://github.co
 
 - [x] [Chapter 1: ChatGPT](#chapter-1-chatgpt) - **complete**
 - [x] [Chapter 2: Memories of Enterprise Data](#chapter-2-memories-of-enterprise-data) - **complete**
-- [ ] [Chapter 3: Azure Cognitive Search and Retrieval Augmented Generation](#chapter-3-azure-cognitive-search-and-retrieval-augmented-generation) - **in progress**
+- [x] [Chapter 3: Azure Cognitive Search and Retrieval Augmented Generation](#chapter-3-azure-cognitive-search-and-retrieval-augmented-generation) - **complete**
 
 
 # Chapter 1: ChatGPT
-In this section will create a minimal chat implementation for a chat application that uses Semantic Kernel Semantic Kernel as a foundation for enterprise data ingestion, long-term memory, plug-ins, and more. We will write a C# Azure Function in detail from scratch that wraps all AI calls using SK and we will use a prebuilt C# console app as our UI for the chat app.
+In this section, we will create a minimal chat implementation for a chat application that uses Semantic Kernel as a foundation for enterprise data ingestion, long-term memory, plug-ins, and more. We will write a C# Azure Function in detail from scratch that wraps all AI calls using SK and we will use a prebuilt C# console app as our UI for the chat app.
 
 ## Configure your environment
 Before you get started, make sure you have the following requirements in place:
@@ -21,12 +21,11 @@ Before you get started, make sure you have the following requirements in place:
 - [.NET 7.0 SDK](https://aka.ms/net70) for building and deploying .NET 7 projects.
 - [Azure Function Core Tools 4.x](https://aka.ms/azfn/coretools) for managing Azure Functions
 - [OpenAI API key](https://platform.openai.com/account/api-keys) for using the OpenAI API (or click [here](https://platform.openai.com/signup) to signup).
-  - Store this key as an environment variable called `OPENAI_APIKEY`.
 
 ## Create an Azure Function project.
-1. In Visual Studio Code, click on the Azure extension (or press `SHIFT+ALT+A`).
-1. Mouse-over `WORKSPACE` and select `Create Function` (i.e., +⚡) to create a new local Azure function project.
-1. Select `Browse`, choose/create the folder where you want to create your Azure Function code (e.g., `myrepo/src/myfunc`) then use the selections below when creating the project:
+1. Open a new Visual Studio Code window and click on the Azure extension (or press `SHIFT+ALT+A`).
+1. Mouse-over `WORKSPACE` (in the lower left pane) and select `Create Function` (i.e., +⚡) to create a new local Azure function project.
+1. Select `Browse`, choose/create the folder where you want to create your Azure Function code (e.g., `semantic-kernel-rag-chat/src/myfunc`) then use the selections below when creating the project:
 
    | Selection       | Value                       |
    | ---------       | -----                       |
@@ -38,14 +37,23 @@ Before you get started, make sure you have the following requirements in place:
    | Access rights   | `Function`                  |
 
 ## Add Semantic Kernel to your Azure Function
-1. Open a terminal window, change to the directory with your project file (e.g., `myrepo/src/myfunc`), 
-   and run the `dotnet` command below to add the Semantic Kernel NuGet package to your project.
-   ```bash
-   dotnet add package Microsoft.SemanticKernel --prerelease
-   ```
+1. Open a terminal window, change to the directory with your project file (e.g., `semantic-kernel-rag-chat/src/myfunc`), 
+    and run the `dotnet` command below to add the Semantic Kernel NuGet package to your project.
+    ```bash
+    dotnet add package Microsoft.SemanticKernel --prerelease
+    ```
+
+    In addition, use the commands below to configure .NET User Secrets and then securely store your OpenAI API key.
+    ```bash
+    dotnet add package Microsoft.Extensions.Configuration.UserSecrets
+    dotnet user-secrets init --id MySemanticKernelChatFunction
+    dotnet user-secrets set "OPENAI_APIKEY" "..."
+    ```
+
+    > Make sure to specify `MySemanticKernelChatFunction` as the `--id` parameter. This will enable you to access your secrets from any of the projects in this repository.
 
 1. Back in your Azure Function project in Visual Studio Code, open the `Program.cs` file and replace everything in the file with the content below. 
-    > This updates the `HostBuilder` to read configuration variables from the environment and sets up a reference to the SK runtime.
+    > This updates the `HostBuilder` to read configuration variables from user secrets and sets up a reference to the SK runtime.
     ```csharp
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
@@ -59,7 +67,7 @@ Before you get started, make sure you have the following requirements in place:
 
     hostBuilder.ConfigureAppConfiguration((context, config) =>
     {
-        config.AddEnvironmentVariables();
+        config.AddUserSecrets<Program>();
     });
 
     hostBuilder.Build().Run();
@@ -74,14 +82,13 @@ Before you get started, make sure you have the following requirements in place:
         services.AddSingleton<IKernel>(sp =>
         {
             IConfiguration configuration = sp.GetRequiredService<IConfiguration>();
-            string apiKey = configuration["OPENAI_APIKEY"];
+            string openAiApiKey = configuration["OPENAI_APIKEY"];
 
             IKernel kernel = new KernelBuilder()
                 .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
                 .Configure(config => config.AddOpenAIChatCompletionService(
-                    serviceId: "chat",
                     modelId: "gpt-3.5-turbo",
-                    apiKey: apiKey))
+                    apiKey: openAiApiKey))
                 .Build();
 
             return kernel;
@@ -115,7 +122,6 @@ Before you get started, make sure you have the following requirements in place:
         _chat = chat;
         _chatHistory = chatHistory;
     }
-
     ```
 
 1. Update the `Run` method to read the user's chat message, add it to the chat history, use our chat service to call ChatGPT and generate a reply message, add the AI's reply to our chat history, and finally, send the reply back to the caller.
@@ -150,24 +156,23 @@ Before you get started, make sure you have the following requirements in place:
 
     hostBuilder.ConfigureAppConfiguration((context, config) =>
     {
-        config.AddEnvironmentVariables();
+        config.AddUserSecrets<Program>();
     });
 
     hostBuilder.ConfigureServices(services =>
     {
         services.AddSingleton<IKernel>(sp =>
         {
-            // Retrieve the OpenAI API key from the configuration/environment.
+            // Retrieve the OpenAI API key from the configuration.
             IConfiguration configuration = sp.GetRequiredService<IConfiguration>();
-            string apiKey = configuration["OPENAI_APIKEY"];
+            string openAiApiKey = configuration["OPENAI_APIKEY"];
 
             // Construct a semantic kernel and connect the OpenAI chat completion APIs.
             IKernel kernel = new KernelBuilder()
                 .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
                 .Configure(config => config.AddOpenAIChatCompletionService(
-                    serviceId: "chat",
                     modelId: "gpt-3.5-turbo",
-                    apiKey: apiKey))
+                    apiKey: openAiApiKey))
                 .Build();
 
             return kernel;
@@ -236,14 +241,14 @@ Before you get started, make sure you have the following requirements in place:
     </details>
 
 ## Run the function locally
-1. Run your Azure Function locally by opening a terminal, changing directory to your Azure Function project (e.g., `myrepo/src/myfunc`), and starting the function by running
+1. Run your Azure Function locally by opening a terminal, changing directory to your Azure Function project (e.g., `semantic-kernel-rag-chat/src/myfunc`), and starting the function by running
     ```bash
     func start
     ```
     > Make note of the URL displayed (e.g., `http://localhost:7071/api/MyChatFunction`).
 
 1. Start the test console application
-   Open a second terminal and change directory to the `chatconsole` project folder (e.g., `myrepo/src/chatconsole`) and run the application using the Azure Function URL.
+   Open a second terminal and change directory to the `chatconsole` project folder (e.g., `semantic-kernel-rag-chat/src/chatconsole`) and run the application using the Azure Function URL.
    ```bash
    dotnet run http://localhost:7071/api/MyChatFunction
    ```
@@ -264,7 +269,7 @@ Before you get started, make sure you have the following requirements in place:
     ```
     As you can see the AI is a bit out of date with its answers.
     
-    In Chapter 1 we created an Azure function hosting semantic kernel that makes it easy to send API calls we want to make to the AI.  This gives us a shared, production ready endpoint that we could use from any given solution we want to build.
+    In Chapter 1 we created an Azure function hosting the Semantic Kernel that makes it easy to send API calls we want to make to the AI.  This gives us a shared, production ready endpoint that we could use from any given solution we want to build.
 
     Next we'll add a 'knowledge base' to the chat to help answer questions such as those above more accurately.
    
@@ -282,8 +287,8 @@ Before you get started, make sure you have the following additional requirements
    > Note that a different vector store, such as Pinecone or Weviate, could be leveraged.
 
 ## Add a memory store in our Azure Function
-1. Open a terminal window, change to the directory with your project file (e.g., `myrepo/src/myfunc`), 
-   and run the `dotnet` commands below to add Semantic Kernel Qdrant Memory Store to your project.
+1. Open a terminal window, change to the directory with your project file (e.g., `semantic-kernel-rag-chat/src/myfunc`), 
+   and run the `dotnet` command below to add the Semantic Kernel Qdrant Memory Store to your project.
     ```bash
     dotnet add package Microsoft.SemanticKernel.Connectors.Memory.Qdrant --prerelease
     ```
@@ -304,18 +309,40 @@ Before you get started, make sure you have the following additional requirements
      IKernel kernel = new KernelBuilder()
         .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
         .Configure(config => config.AddOpenAIChatCompletionService(
-            serviceId: "chat",
             modelId: "gpt-3.5-turbo",
-            apiKey: apiKey))
+            apiKey: openAiApiKey))
         .Configure(c => c.AddOpenAITextEmbeddingGenerationService(
-            serviceId: "embedding",
             modelId: "text-embedding-ada-002",
-            apiKey))
+            apiKey: openAiApiKey))
         .WithMemoryStorage(memoryStore)
         .Build();
     ```
 
-1. Open `MyChatFunction.cs` and replace where we add the user's message to the chat history
+1. Open `MyChatFunction.cs` and add the following using statements to the top.
+    ```csharp
+    using System.Text;
+    using Microsoft.SemanticKernel;
+    using Microsoft.SemanticKernel.Memory;
+    ```
+
+    Update the constructor to take an instance of the kernel and store it as a member variable.
+
+    ```csharp
+    private readonly ILogger _logger;
+    private readonly IKernel _kernel;
+    private readonly IChatCompletion _chat;
+    private readonly ChatHistory _chatHistory;
+
+    public MyChatFunction(ILoggerFactory loggerFactory, IKernel kernel, ChatHistory chatHistory, IChatCompletion chat)
+    {
+        _logger = loggerFactory.CreateLogger<MyChatFunction>();
+        _kernel = kernel;
+        _chat = chat;
+        _chatHistory = chatHistory;
+    }
+    ```
+
+    Replace where we add the user's message to the chat history
    (`_chatHistory!.AddMessage(ChatHistory.AuthorRoles.User,...`) with a call that will search for related memories and include them
    in the user's message to the AI.
 	```csharp
@@ -381,16 +408,16 @@ Before you get started, make sure you have the following additional requirements
 
     hostBuilder.ConfigureAppConfiguration((context, config) =>
     {
-        config.AddEnvironmentVariables();
+        config.AddUserSecrets<Program>();
     });
 
     hostBuilder.ConfigureServices(services =>
     {
         services.AddSingleton<IKernel>(sp =>
         {
-            // Retrieve the OpenAI API key from the configuration/environment.
+            // Retrieve the OpenAI API key from the configuration.
             IConfiguration configuration = sp.GetRequiredService<IConfiguration>();
-            string apiKey = configuration["OPENAI_APIKEY"];
+            string openAiApiKey = configuration["OPENAI_APIKEY"];
 
             // Create a memory store that will be used to store memories.
             QdrantMemoryStore memoryStore = new QdrantMemoryStore(
@@ -403,13 +430,11 @@ Before you get started, make sure you have the following additional requirements
             IKernel kernel = new KernelBuilder()
                 .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
                 .Configure(config => config.AddOpenAIChatCompletionService(
-                    serviceId: "chat",
                     modelId: "gpt-3.5-turbo",
-                    apiKey: apiKey))
+                    apiKey: openAiApiKey))
                 .Configure(c => c.AddOpenAITextEmbeddingGenerationService(
-                    serviceId: "embedding",
                     modelId: "text-embedding-ada-002",
-                    apiKey: apiKey))
+                    apiKey: openAiApiKey))
                 .WithMemoryStorage(memoryStore)
                 .Build();
 
@@ -520,30 +545,29 @@ Before you get started, make sure you have the following additional requirements
 ## Deploy Qdrant VectorDB and Populate Data
 In this section we deploy the Qdrant vector database locally and populate it with example data (i.e., Microsoft's 2022 10-K financial report). This will take approximately 15 minutes to import and will use OpenAI’s embedding generation service to create embeddings for the 10-K.
 
+1. Start Docker Desktop and wait until it is running.
+
 1. Open a terminal and use Docker to pull down the container image for Qdrant.
     ```bash
     docker pull qdrant/qdrant
     ```
 
-1. Change directory to this repo and create a `./data/qdrant` directory for Qdrant to use as persistent storage. 
+1. Change directory to the root of this repo (e.g., `semantic-kernel-rag-chat`) and create a `./data/qdrant` directory for Qdrant to use as persistent storage.
    Then start the Qdrant container on port `6333` using the `./data/qdrant` folder as the persistent storage location.
     ```bash
-    cd /src/semantic-kernel-rag-chat
     mkdir ./data/qdrant
     docker run --name mychat -p 6333:6333 -v "$(pwd)/data/qdrant:/qdrant/storage" qdrant/qdrant
     ```
     > To stop the container, in another terminal window run `docker container stop mychat; docker container rm mychat;`.
 
-1. Open a second terminal, change directory to this repo, and run the `importmemories` tool to populate the vector database with your data.
+1. Open a second terminal and change directory to the `importmemories` project folder in this repo (e.g., `semantic-kernel-rag-chat/src/importmemories`). Run the `importmemories` tool with the command below to populate the vector database with your data.
     > Make sure the `--collection` argument matches the `collectionName` variable in the `SearchMemoriesAsync` method above.
     
     > **Note:** This may take several minutes to several hours depending on the size of your data. This repo contains 
       Microsoft's 2022 10-K financial report data as an example which should normally take about 15 minutes to import.
         
 	```bash
-    cd /src/semantic-kernel-rag-chat
-    cd src/importmemories
-    dotnet run -- --memory-store-type qdrant --memory-store-url http://localhost:6333 --collection ms10k --text-file ../../data/ms10k.txt
+    dotnet run -- --memory-type qdrant --memory-url http://localhost:6333 --collection ms10k --text-file ../../data/ms10k.txt
 	```
     > When importing your own data, try to import all files at the same time using multiple `--text-file` arguments. 
     > This example leverages incremental indexes which are best constructed when all data is present. 
@@ -551,14 +575,14 @@ In this section we deploy the Qdrant vector database locally and populate it wit
     > If you want to reset the memory store, delete and recreate the directory in step 2, or create a new directory to use.
         
 ## Run the function locally
-1. With Qdrant running and populated, run your Azure Function locally by opening a terminal, changing directory to your Azure Function project (e.g., `myrepo/src/myfunc`), and starting the function by running
+1. With Qdrant running and populated, run your Azure Function locally by opening a terminal, changing directory to your Azure Function project (e.g., `semantic-kernel-rag-chat/src/myfunc`), and starting the function by running
     ```bash
     func start
     ```
     > Make a note of the URL displayed (e.g., `http://localhost:7071/api/MyChatFunction`).
 
 1. Start the test console application
-   Open a second terminal and change directory to the `chatconsole` project folder (e.g., `myrepo/src/chatconsole`) and run the application using the Azure Function URL.
+   Open a second terminal and change directory to the `chatconsole` project folder (e.g., `semantic-kernel-rag-chat/src/chatconsole`) and run the application using the Azure Function URL.
    ```bash
    dotnet run http://localhost:7071/api/MyChatFunction
    ```
@@ -588,22 +612,28 @@ In this section we deploy the Qdrant vector database locally and populate it wit
 
 This is an alternative to the vector-based approach we took in chapter 2. With semantic search, we no longer need to generate embeddings like we did in the previous chapter. Instead, a [semantic re-ranking process](https://learn.microsoft.com/en-us/azure/search/semantic-ranking) is applied to the initial set of search results, using the context and meaning of words to elevate the results that are most relevant.
 
-In this chapter, we will modify our chat function to use Azure Cognitive Search with semantic search as the backing memory store. We will once again demonstrate how we can use this memory to generate more meaningful results in our chat application.
+In this chapter, we will modify our chat function to use Azure Cognitive Search with semantic search. We will once again demonstrate how we can use this memory to generate more meaningful results in our chat application.
 
 ## Configure your environment
 Before you get started, make sure you have the following additional requirements:
 - An instance of the Azure Cognitive Search service, with semantic search enabled.
   - For instructions on setting up an Azure Cognitive Search service instance, click [here](https://learn.microsoft.com/en-us/azure/search/search-create-service-portal).
   - For instructions on enabling semantic search, click [here](https://learn.microsoft.com/en-us/azure/search/semantic-search-overview#enable-semantic-search).
-- Set the following two environment variables:
+- To connect to the service, you will need the following two pieces of data:
   - `AZURE_COGNITIVE_SEARCH_APIKEY`: an [admin key](https://learn.microsoft.com/en-us/azure/search/search-security-api-keys?tabs=portal-use%2Cportal-find%2Cportal-query#find-existing-keys) to your Azure Cognitive Search service
-  - `AZURE_COGNITIVE_SEARCH_ENDPOINT`: the URL to your Azure Cognitive Search endpoint.
+  - `AZURE_COGNITIVE_SEARCH_URL`: the URL to your Azure Cognitive Search endpoint
 
 ## Update the memory store in our Azure Function
-1. Open a terminal window, change to the directory with your project file (e.g., `myrepo/src/myfunc`), 
-   and run the `dotnet` commands below to add the Semantic Kernel Azure Cognitive Search connector to your project.
+1. Open a terminal window, change to the directory with your project file (e.g., `semantic-kernel-rag-chat/src/myfunc`), 
+   and run the `dotnet` command below to add the Semantic Kernel Azure Cognitive Search connector to your project.
     ```bash
     dotnet add package Microsoft.SemanticKernel.Connectors.Memory.AzureCognitiveSearch --prerelease
+    ```
+
+    In addition, use the `dotnet user-secrets` commands below to securely store your Azure Cognitive Search API key and endpoint URL.
+    ```bash
+    dotnet user-secrets set "AZURE_COGNITIVE_SEARCH_APIKEY" "..."
+    dotnet user-secrets set "AZURE_COGNITIVE_SEARCH_URL" "..."
     ```
 
 1. Open your Program code file (e.g., `Program.cs`) and add the Azure Cognitive Search connector using statement to the top.
@@ -615,20 +645,19 @@ Before you get started, make sure you have the following additional requirements
 
     ```csharp
     AzureCognitiveSearchMemory memory = new AzureCognitiveSearchMemory(
-        configuration["AZURE_COGNITIVE_SEARCH_ENDPOINT"],
+        configuration["AZURE_COGNITIVE_SEARCH_URL"],
         configuration["AZURE_COGNITIVE_SEARCH_APIKEY"]
     );
     ```
     
     Then, update the builder code where we instantiate the Semantic Kernel. We can remove the OpenAI embedding generation service and the Qdrant memory store from the builder, and replace them with the Azure Cognitive Search memory that we just created.
 
-    ```
+    ```csharp
     IKernel kernel = new KernelBuilder()
         .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
         .Configure(config => config.AddOpenAIChatCompletionService(
-            serviceId: "chat",
             modelId: "gpt-3.5-turbo",
-            apiKey: apiKey))
+            apiKey: openAiApiKey))
         .WithMemory(memory)
         .Build();
     ```
@@ -653,20 +682,20 @@ Before you get started, make sure you have the following additional requirements
 
     hostBuilder.ConfigureAppConfiguration((context, config) =>
     {
-        config.AddEnvironmentVariables();
+        config.AddUserSecrets<Program>();
     });
 
     hostBuilder.ConfigureServices(services =>
     {
         services.AddSingleton<IKernel>(sp =>
         {
-            // Retrieve the OpenAI API key from the configuration/environment.
+            // Retrieve the OpenAI API key from the configuration.
             IConfiguration configuration = sp.GetRequiredService<IConfiguration>();
-            string apiKey = configuration["OPENAI_APIKEY"];
+            string openAiApiKey = configuration["OPENAI_APIKEY"];
 
             // Create a memory connector to Azure Cognitive Search that will be used to store memories.
             AzureCognitiveSearchMemory memory = new AzureCognitiveSearchMemory(
-               configuration["AZURE_COGNITIVE_SEARCH_ENDPOINT"],
+               configuration["AZURE_COGNITIVE_SEARCH_URL"],
                configuration["AZURE_COGNITIVE_SEARCH_APIKEY"]
             );
 
@@ -674,9 +703,8 @@ Before you get started, make sure you have the following additional requirements
             IKernel kernel = new KernelBuilder()
                 .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
                 .Configure(config => config.AddOpenAIChatCompletionService(
-                    serviceId: "chat",
                     modelId: "gpt-3.5-turbo",
-                    apiKey: apiKey))
+                    apiKey: openAiApiKey))
                 .WithMemory(memory)
                 .Build();
 
@@ -787,28 +815,26 @@ Before running our updated code, we'll need to populate an Azure Cognitive Searc
 ## Populate the search index
 In this section we create and populate an Azure Cognitive Search index with example data (i.e., Microsoft's 2022 10-K financial report). This will take approximately 5 minutes to import.
 
-1. Open a terminal, change directory to this repo, and run the `importmemories` tool to populate the search index with your data.
+1. Open a terminal and change directory to the `importmemories` project folder in this repo. Run the `importmemories` tool with the command below to populate the search index with your data.
     > Make sure the `--collection` argument matches the `collectionName` variable in the `SearchMemoriesAsync` method above.
     
     > **Note:** This may take several minutes to several hours depending on the size of your data. This repo contains Microsoft's 2022 10-K financial report data as an example which should normally take about 5 minutes to import.
         
 	```bash
-    cd /src/semantic-kernel-rag-chat
-    cd src/importmemories
-    dotnet run -- --memory-store-type azurecognitivesearch --memory-store-url $AZURE_COGNITIVE_SEARCH_ENDPOINT --collection ms10k --text-file ../../data/ms10k.txt
+    dotnet run -- --memory-type azurecognitivesearch --memory-url $AZURE_COGNITIVE_SEARCH_URL --collection ms10k --text-file ../../data/ms10k.txt
 	```
 
     > If you want to reset the memory store, you can delete the index from your service via the Azure portal or [the Azure Cognitive Search REST API](https://learn.microsoft.com/en-us/rest/api/searchservice/delete-index). The index name is the same as the `--collection` argument (e.g. `ms10k`).
 
 ## Run the function locally
-1. With the Azure Cognitive Search service running and populated, run your Azure Function locally by opening a terminal, changing directory to your Azure Function project (e.g., `myrepo/src/myfunc`), and starting the function by running
+1. With the Azure Cognitive Search service running and populated, run your Azure Function locally by opening a terminal, changing directory to your Azure Function project (e.g., `semantic-kernel-rag-chat/src/myfunc`), and starting the function by running
     ```bash
     func start
     ```
     > Make a note of the URL displayed (e.g., `http://localhost:7071/api/MyChatFunction`).
 
 1. Start the test console application
-   Open a second terminal and change directory to the `chatconsole` project folder (e.g., `myrepo/src/chatconsole`) and run the application using the Azure Function URL.
+   Open a second terminal and change directory to the `chatconsole` project folder (e.g., `semantic-kernel-rag-chat/src/chatconsole`) and run the application using the Azure Function URL.
    ```bash
    dotnet run http://localhost:7071/api/MyChatFunction
    ```

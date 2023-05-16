@@ -11,7 +11,7 @@ var hostBuilder = new HostBuilder()
 
 hostBuilder.ConfigureAppConfiguration((context, config) =>
 {
-    config.AddEnvironmentVariables();
+    config.AddUserSecrets<Program>();
 });
 
 hostBuilder.ConfigureServices(services =>
@@ -19,7 +19,7 @@ hostBuilder.ConfigureServices(services =>
     services.AddSingleton<IKernel>(sp =>
     {
         IConfiguration configuration = sp.GetRequiredService<IConfiguration>();
-        string apiKey = configuration["OPENAI_APIKEY"];
+        string openAiApiKey = configuration["OPENAI_APIKEY"];
 
         QdrantMemoryStore memoryStore = new QdrantMemoryStore(
            host: "http://localhost",
@@ -30,13 +30,11 @@ hostBuilder.ConfigureServices(services =>
         IKernel kernel = new KernelBuilder()
             .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
             .Configure(config => config.AddOpenAIChatCompletionService(
-                serviceId: "chat",
                 modelId: "gpt-3.5-turbo",
-                apiKey: apiKey))
+                apiKey: openAiApiKey))
             .Configure(c => c.AddOpenAITextEmbeddingGenerationService(
-                serviceId: "text-embedding-ada-002",
                 modelId: "text-embedding-ada-002",
-                apiKey: apiKey))
+                apiKey: openAiApiKey))
             .WithMemoryStorage(memoryStore)
             .Build();
 

@@ -13,6 +13,14 @@ internal class Program
         
         string url = args[0];
 
+        Uri? tmp;
+        if (!Uri.TryCreate(url, UriKind.Absolute, out tmp))
+        {
+            Console.Error.WriteLine("Please provide a valid URL to your running Semantic Kernel Azure Function");
+            Console.Error.WriteLine("Example: chatconsole.exe http://localhost:7077/api/MySemanticKernelFunction");
+            return;
+        }
+
         Console.WriteLine("Hello! This is a chat console.");
         Console.WriteLine(url);
 

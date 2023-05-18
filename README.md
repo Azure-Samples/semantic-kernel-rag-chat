@@ -32,7 +32,7 @@ git clone https://github.com/Azure-Samples/semantic-kernel-rag-chat
 ## Create an Azure Function project
 1. Open a new Visual Studio Code window and click on the Azure extension (or press `SHIFT+ALT+A`).
 1. Mouse-over `WORKSPACE` (in the lower left pane) and select `Create Function` (i.e., +⚡) to create a new local Azure function project.
-1. Select `Browse` and create a folder inside the cloned repo to house your Azure Function code (e.g., `semantic-kernel-rag-chat/src/myfunc`). Then use the selections below when creating the project:
+1. Select `Browse` and create a folder called `myfunc` inside the cloned repo's `src` directory to house your Azure Function code (e.g., `semantic-kernel-rag-chat/src/myfunc`). Then use the selections below when creating the project:
 
    | Selection       | Value                       |
    | ---------       | -----                       |
@@ -56,13 +56,14 @@ Now close and reopen Visual Studio Code, this time opening the `semantic-kernel-
     ```bash
     dotnet add package Microsoft.Extensions.Configuration.UserSecrets
     dotnet user-secrets init --id semantic-kernel-rag-chat
-    dotnet user-secrets set "OPENAI_APIKEY" "..."
+    dotnet user-secrets set "OPENAI_APIKEY" "<your OpenAI API key>"
     ```
 
     > Make sure to specify `semantic-kernel-rag-chat` as the `--id` parameter. This will enable you to access your secrets from any of the projects in this repository.
 
-1. Back in your Azure Function project in Visual Studio Code, open the `Program.cs` file and replace everything in the file with the content below. 
-    > This updates the `HostBuilder` to read configuration variables from user secrets and sets up a reference to the SK runtime.
+1. Back in your Azure Function project in Visual Studio Code, open the `Program.cs` file and replace everything in the file with the content below. This updates the `HostBuilder` to read configuration variables from user secrets and sets up a reference to the SK runtime.
+    > We will walk through the code step-by-step, but you can find the complete code files in step 7 of this section.
+
     ```csharp
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
@@ -303,6 +304,9 @@ Before you get started, make sure you have the following additional requirements
     ```
 
 1. Open your Program code file (e.g., `Program.cs`) and add the Qdrant memory store using statement to the top.
+
+    > We will walk through the code step-by-step, but you can find the complete code files in step 5 of this section.
+
     ```csharp
     using Microsoft.SemanticKernel.Connectors.Memory.Qdrant;
     ```
@@ -641,8 +645,8 @@ Before you get started, make sure you have the following additional requirements
 
     In addition, use the `dotnet user-secrets` commands below to securely store your Azure Cognitive Search API key and endpoint URL.
     ```bash
-    dotnet user-secrets set "AZURE_COGNITIVE_SEARCH_APIKEY" "..."
-    dotnet user-secrets set "AZURE_COGNITIVE_SEARCH_URL" "..."
+    dotnet user-secrets set "AZURE_COGNITIVE_SEARCH_APIKEY" "<your Azure Cognitive Search admin API key>"
+    dotnet user-secrets set "AZURE_COGNITIVE_SEARCH_URL" "<your Azure Cognitive Search endpoint URL>"
     ```
 
 1. Open your Program code file (e.g., `Program.cs`) and add the Azure Cognitive Search connector using statement to the top.
@@ -863,7 +867,6 @@ In this section we create and populate an Azure Cognitive Search index with exam
     Input: Did linkedin's revenue grow in 2022?
     AI: Yes, LinkedIn's revenue increased by 34% in fiscal year 2022 compared to the previous year.
     ```
-    
 
 # Appendix
 ## Deploy Azure Function to Azure
@@ -872,7 +875,7 @@ In this section we create and populate an Azure Cognitive Search index with exam
     > This tutorial uses **Azure Functions** ([pricing](https://azure.microsoft.com/en-us/pricing/details/functions/)) and **Azure Cognitive Search** ([pricing](https://azure.microsoft.com/pricing/details/search/)) that may incur a monthly cost. Visit [here](https://azure.microsoft.com/free/cognitive-search/) to get some free Azure credits to get you started.
 
 1. In Visual Studio Code, click on the Azure extension (or press `SHIFT+ALT+A`)
-1. Mouse-over `RESOURCES` again and select `Create Resource` (i.e., +), select `Create Function App in Azure...`, select your Azure Subscription.
+1. Mouse-over `RESOURCES` and select `Create Resource` (i.e., +), select `Create Function App in Azure...`, select your Azure Subscription.
 1. Enter a name for your deployed function, for example `fn-mychatfunction`.
 1. Set the runtime stack to `.NET 7 Isolated` and choose a location in which to deploy your Azure Function.
     > If you don't have a preference, choose the recommended region.

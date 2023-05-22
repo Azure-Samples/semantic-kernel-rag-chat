@@ -868,6 +868,11 @@ In this section we create and populate an Azure Cognitive Search index with exam
     AI: Yes, LinkedIn's revenue increased by 34% in fiscal year 2022 compared to the previous year.
     ```
 
+
+We've now seen how we can improve the experience of our Semantic Kernel chat application to leverage the Retrieval Augmented Generation pattern by using either vector search with Qdrant (in chapter 2) or semantic search with Azure Cognitive Search (in chapter 3).  Feel free to add more data and explore what else you can create with Semantic Kernel.
+
+For more guidance and ideas, checkout out the [SK documentation](https://learn.microsoft.com/en-us/semantic-kernel/), [blog](https://devblogs.microsoft.com/semantic-kernel/), and [Discord community](https://discord.com/invite/VpnfAZkv2a). Happy building!
+
 # Appendix
 ## Deploy Azure Function to Azure
 1. If you don't already have an Azure account go to https://azure.microsoft.com, click on `Try Azure for free`, and select `Start Free` to start creating a free Azure account with your Microsoft or GitHub account. After signing in, you will be prompted to enter some information.

@@ -869,7 +869,7 @@ In this section we create and populate an Azure Cognitive Search index with exam
     ```
 
 
-We've now seen how we can improve the experience of our Semantic Kernel chat application to leverage the Retrieval Augmented Generation pattern by using either vector search with Qdrant (in chapter 2) or semantic search with Azure Cognitive Search (in chapter 3).  Feel free to add more data and explore what else you can create with Semantic Kernel.
+We've now seen how we can improve the experience of our Semantic Kernel chat application to leverage the Retrieval Augmented Generation pattern using Azure Cognitive Search with semantic search.  Try adding more data to your search index and explore what else you can create with Semantic Kernel.
 
 For more guidance and ideas, checkout out the [SK documentation](https://learn.microsoft.com/en-us/semantic-kernel/), [blog](https://devblogs.microsoft.com/semantic-kernel/), and [Discord community](https://discord.com/invite/VpnfAZkv2a). Happy building!
 

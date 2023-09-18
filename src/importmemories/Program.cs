@@ -55,6 +55,7 @@ internal class Program
         {
             // Get the Azure Cognitive Search API key from the environment.
             string? azureCognitiveSearchApiKey = config["AZURE_COGNITIVE_SEARCH_APIKEY"];
+            string? openAiApiKey = config["OPENAI_APIKEY"];
 
             if (string.IsNullOrWhiteSpace(azureCognitiveSearchApiKey))
             {
@@ -69,6 +70,7 @@ internal class Program
 
             // Create a new kernel with an OpenAI Embedding Generation service.
             kernel = new KernelBuilder()
+                .WithOpenAITextEmbeddingGenerationService("text-embedding-ada-002", openAiApiKey)
                 .WithMemoryStorage(memory)
                 .Build();
         }

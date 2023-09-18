@@ -62,7 +62,7 @@ internal class Program
                 return;
             }
 
-            AzureCognitiveSearchMemory memory = new AzureCognitiveSearchMemory(
+            AzureCognitiveSearchMemoryStore memory = new AzureCognitiveSearchMemoryStore(
                 memoryUrl,
                 azureCognitiveSearchApiKey
             );

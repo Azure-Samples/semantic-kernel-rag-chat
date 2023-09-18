@@ -69,7 +69,7 @@ internal class Program
 
             // Create a new kernel with an OpenAI Embedding Generation service.
             kernel = new KernelBuilder()
-                .WithMemory(memory)
+                .WithMemoryStorage(memory)
                 .Build();
         }
         else

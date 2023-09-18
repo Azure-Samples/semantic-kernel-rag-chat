@@ -41,8 +41,7 @@ internal class Program
             // Create a new memory store that will store the embeddings in Qdrant.
             Uri qdrantUri = new Uri(memoryUrl);
             QdrantMemoryStore memoryStore = new QdrantMemoryStore(
-                host: $"{qdrantUri.Scheme}://{qdrantUri.Host}",
-                port: qdrantUri.Port,
+                endpoint: $"{qdrantUri.Scheme}://{qdrantUri.Host}:{qdrantUri.Port}",
                 vectorSize: 1536);
 
             // Create a new kernel with an OpenAI Embedding Generation service.

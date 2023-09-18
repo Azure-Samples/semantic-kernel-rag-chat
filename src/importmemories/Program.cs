@@ -46,9 +46,7 @@ internal class Program
 
             // Create a new kernel with an OpenAI Embedding Generation service.
             kernel = new KernelBuilder()
-                .Configure(c => c.AddOpenAITextEmbeddingGenerationService(
-                    modelId: "text-embedding-ada-002",
-                    apiKey: openAiApiKey))
+                .WithOpenAITextEmbeddingGenerationService("text-embedding-ada-002", openAiApiKey)
                 .WithMemoryStorage(memoryStore)
                 .Build();
 

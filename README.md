@@ -49,7 +49,7 @@ Now close and reopen Visual Studio Code, this time opening the `semantic-kernel-
 1. Open a terminal window, change to the directory with your Azure Function project file (e.g., `semantic-kernel-rag-chat/src/myfunc`), 
     and run the `dotnet` command below to add the Semantic Kernel NuGet package to your project.
     ```bash
-    dotnet add package Microsoft.SemanticKernel --prerelease -v 0.14.547.1-preview
+    dotnet add package Microsoft.SemanticKernel --prerelease -v dotnet-0.24.230918.1-preview
     ```
 
     In addition, use the commands below to configure .NET User Secrets and then securely store your OpenAI API key.
@@ -96,9 +96,7 @@ Now close and reopen Visual Studio Code, this time opening the `semantic-kernel-
 
             IKernel kernel = new KernelBuilder()
                 .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
-                .Configure(config => config.AddOpenAIChatCompletionService(
-                    modelId: "gpt-3.5-turbo",
-                    apiKey: openAiApiKey))
+                .WithOpenAIChatCompletionService("gpt-3.5-turbo", openAiApiKey)
                 .Build();
 
             return kernel;
@@ -300,7 +298,7 @@ Before you get started, make sure you have the following additional requirements
 1. Open a terminal window, change to the directory with your project file (e.g., `semantic-kernel-rag-chat/src/myfunc`), 
    and run the `dotnet` command below to add the Semantic Kernel Qdrant Memory Store to your project.
     ```bash
-    dotnet add package Microsoft.SemanticKernel.Connectors.Memory.Qdrant --prerelease -v 0.14.547.1-preview
+    dotnet add package Microsoft.SemanticKernel.Connectors.Memory.Qdrant --prerelease -v dotnet-0.24.230918.1-preview
     ```
 
 1. Open your Program code file (e.g., `Program.cs`) and add the Qdrant memory store using statement to the top.
@@ -640,7 +638,7 @@ Before you get started, make sure you have the following additional requirements
 1. Open a terminal window, change to the directory with your project file (e.g., `semantic-kernel-rag-chat/src/myfunc`), 
    and run the `dotnet` command below to add the Semantic Kernel Azure Cognitive Search connector to your project.
     ```bash
-    dotnet add package Microsoft.SemanticKernel.Connectors.Memory.AzureCognitiveSearch --prerelease -v 0.14.547.1-preview
+    dotnet add package Microsoft.SemanticKernel.Connectors.Memory.AzureCognitiveSearch --prerelease -v dotnet-0.24.230918.1-preview
     ```
 
     In addition, use the `dotnet user-secrets` commands below to securely store your Azure Cognitive Search API key and endpoint URL.

@@ -24,11 +24,11 @@ namespace My.Chapter1
         {
             _logger.LogInformation("C# HTTP trigger function processed a request.");
 
-            _chatHistory!.AddMessage(ChatHistory.AuthorRoles.User, await req.ReadAsStringAsync() ?? string.Empty);
+            _chatHistory!.AddMessage(AuthorRole.User, await req.ReadAsStringAsync() ?? string.Empty);
 
             string reply = await _chat.GenerateMessageAsync(_chatHistory, new ChatRequestSettings());
 
-            _chatHistory.AddMessage(ChatHistory.AuthorRoles.Assistant, reply);
+            _chatHistory.AddMessage(AuthorRole.Assistant, reply);
 
             HttpResponseData response = req.CreateResponse(HttpStatusCode.OK);
             response.WriteString(reply);

@@ -19,19 +19,21 @@ hostBuilder.ConfigureServices(services =>
     services.AddSingleton<IKernel>(sp =>
     {
         IConfiguration configuration = sp.GetRequiredService<IConfiguration>();
-        string openAiApiKey = configuration["OPENAI_APIKEY"];
+        string openAiApiKey = configuration["OPENAI_APIKEY"] ?? "";
+        string azureCognitiveSearchUrl = configuration["AZURE_COGNITIVE_SEARCH_URL"] ?? "";
+        string azureCognitiveSearchApiKey = configuration["AZURE_COGNITIVE_SEARCH_APIKEY"] ?? "";
 
-        AzureCognitiveSearchMemory memory = new AzureCognitiveSearchMemory(
-            configuration["AZURE_COGNITIVE_SEARCH_URL"],
-            configuration["AZURE_COGNITIVE_SEARCH_APIKEY"]
+        AzureCognitiveSearchMemoryStore memory = new AzureCognitiveSearchMemoryStore(
+            azureCognitiveSearchUrl,
+            azureCognitiveSearchApiKey
         );
 
         IKernel kernel = new KernelBuilder()
-            .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
-            .Configure(config => config.AddOpenAIChatCompletionService(
-                modelId: "gpt-3.5-turbo",
-                apiKey: openAiApiKey))
-            .WithMemory(memory)
+            .WithLoggerFactory(sp.GetRequiredService<ILoggerFactory>())
+            .WithOpenAIChatCompletionService(
+                "gpt-3.5-turbo",
+                openAiApiKey)
+            .WithMemoryStorage(memory)
             .Build();
 
         return kernel;

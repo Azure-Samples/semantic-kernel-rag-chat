@@ -29,13 +29,13 @@ namespace My.MyChatFunction
         {
             _logger.LogInformation("C# HTTP trigger function processed a request.");
 
-            _chatHistory!.AddMessage(ChatHistory.AuthorRoles.User, await req.ReadAsStringAsync() ?? string.Empty);
+            _chatHistory!.AddMessage(AuthorRole.User, await req.ReadAsStringAsync() ?? string.Empty);
             //string message = await SearchMemoriesAsync(_kernel, await req.ReadAsStringAsync() ?? string.Empty);
-            //_chatHistory!.AddMessage(ChatHistory.AuthorRoles.User, message);
+            //_chatHistory!.AddMessage(AuthorRole.User, message);
 
             string reply = await _chat.GenerateMessageAsync(_chatHistory, new ChatRequestSettings());
 
-            _chatHistory.AddMessage(ChatHistory.AuthorRoles.Assistant, reply);
+            _chatHistory.AddMessage(AuthorRole.Assistant, reply);
 
             HttpResponseData response = req.CreateResponse(HttpStatusCode.OK);
             response.WriteString(reply);

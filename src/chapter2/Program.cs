@@ -19,22 +19,25 @@ hostBuilder.ConfigureServices(services =>
     services.AddSingleton<IKernel>(sp =>
     {
         IConfiguration configuration = sp.GetRequiredService<IConfiguration>();
-        string openAiApiKey = configuration["OPENAI_APIKEY"];
+        string openAiApiKey = configuration["OPENAI_APIKEY"] ?? "";
+        string qdrantEndpoint = configuration["QDRANT_ENDPOINT"] ?? "";
+
+        Uri qdrantUri = new Uri(qdrantEndpoint);
 
         QdrantMemoryStore memoryStore = new QdrantMemoryStore(
-           host: "http://localhost",
-           port: 6333,
-           vectorSize: 1536,
-           logger: sp.GetRequiredService<ILogger<QdrantMemoryStore>>());
+            endpoint: $"{qdrantUri.Scheme}://{qdrantUri.Host}:{qdrantUri.Port}",
+            vectorSize: 1536,
+            loggerFactory: sp.GetRequiredService<ILoggerFactory>()
+        );
+
 
         IKernel kernel = new KernelBuilder()
-            .WithLogger(sp.GetRequiredService<ILogger<IKernel>>())
-            .Configure(config => config.AddOpenAIChatCompletionService(
-                modelId: "gpt-3.5-turbo",
-                apiKey: openAiApiKey))
-            .Configure(c => c.AddOpenAITextEmbeddingGenerationService(
-                modelId: "text-embedding-ada-002",
-                apiKey: openAiApiKey))
+            .WithLoggerFactory(sp.GetRequiredService<ILoggerFactory>())
+            .WithOpenAIChatCompletionService(
+                "gpt-3.5-turbo",
+                openAiApiKey
+            )
+            .WithOpenAITextEmbeddingGenerationService("text-embedding-ada-002", openAiApiKey)
             .WithMemoryStorage(memoryStore)
             .Build();
 

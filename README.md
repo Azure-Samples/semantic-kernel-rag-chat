@@ -642,7 +642,7 @@ Before you get started, make sure you have the following additional requirements
 1. Open a terminal window, change to the directory with your project file (e.g., `semantic-kernel-rag-chat/src/myfunc`), 
    and run the `dotnet` command below to add the Semantic Kernel Azure Cognitive Search connector to your project.
     ```bash
-    dotnet add package Microsoft.SemanticKernel.Connectors.Memory.AzureCognitiveSearch --prerelease -v dotnet-0.24.230918.1-preview
+    dotnet add package Microsoft.SemanticKernel.Connectors.Memory.AzureCognitiveSearch -v 0.24.230918.1-preview
     ```
 
     In addition, use the `dotnet user-secrets` commands below to securely store your Azure Cognitive Search API key and endpoint URL.
